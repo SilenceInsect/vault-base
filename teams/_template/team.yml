@@ -1,0 +1,13 @@
+# 逻辑标识：{team_type}:{team_name}
+# 磁盘路径：teams/{team_type}/{team_name}/
+id: "{team_type}:{team_name}"
+team_type: "{team_type}"
+team_name: "{team_name}"
+display_name: ""
+project: ""
+owners: []
+notes: |
+  本组私有备注（勿提交敏感明文密码）。
+paths: {}
+links: {}
+updated_at: ""

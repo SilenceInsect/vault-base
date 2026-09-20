@@ -1,0 +1,33 @@
+﻿references/vault/_kb/secrets.local.json
+references/vault/_kb/*.db
+references/vault/_kb/baseline.json
+references/vault/_kb/last_probe.json
+__pycache__/
+_extract_from_plan.py
+scripts/__pycache__/
+
+# --- team workspaces (team-type:team-name → teams/<type>/<name>/) ---
+teams/**
+!teams/README.md
+!teams/_template/
+!teams/_template/**
+!teams/svn-ignore.txt
+
+# local / private
+INSTALL-STATUS.md
+references/vault/_kb/secrets.local.json
+references/vault/_kb/*.db
+references/vault/_kb/baseline.json
+references/vault/_kb/last_probe.json
+references/vault/answers/**
+references/vault/decisions/**
+references/vault/references/**
+!references/vault/briefs/_samples/
+teams/**
+!teams/README.md
+!teams/_template/
+!teams/_template/**
+!teams/svn-ignore.txt
+__pycache__/
+*.pyc
+.DS_Store

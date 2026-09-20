@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "auto_share_judge": false,
+  "event_backend": "redis_list",
+  "cache_ttl_seconds": 172800,
+  "retrieval": {
+    "min_score": 0.35,
+    "emit_low_confidence_hint": true
+  },
+  "redact": {
+    "enabled": true,
+    "force_private_on_hit": true
+  },
+  "degrade": {
+    "probe_timeout_ms": 2000,
+    "allow_offline": true
+  }
+}

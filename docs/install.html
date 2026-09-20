@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vault-base · 安装部署手册</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel-2:#1c2128; --line:#30363d; --line-soft:#21262d;
+  --fg:#e6edf3; --fg-dim:#8b949e; --fg-mute:#6e7681;
+  --blue:#4493f8; --teal:#3fb950; --amber:#d29922; --red:#f85149;
+  --mono:"Cascadia Code","JetBrains Mono","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+code,pre{font-family:var(--mono);font-size:12.5px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px 96px}
+.layout{display:grid;grid-template-columns:200px 1fr;gap:32px;align-items:start}
+nav.toc{position:sticky;top:20px;padding:20px 0;font-size:13px}
+nav.toc .toc-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-mute);margin:0 0 12px}
+nav.toc a{display:block;padding:5px 10px;border-left:2px solid transparent;color:var(--fg-dim)}
+nav.toc a:hover,nav.toc a.on{color:var(--fg);background:var(--panel);text-decoration:none}
+nav.toc a.on{border-left-color:var(--blue)}
+header{padding:48px 0 28px;border-bottom:1px solid var(--line)}
+h1{margin:0 0 10px;font-size:24px;font-weight:500}
+.sub{color:var(--fg-dim);margin:0 0 18px;max-width:720px}
+.meta{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:3px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:12px;color:var(--fg-dim)}
+.chip b{color:var(--fg);font-weight:500}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.dot.b{background:var(--blue)}.dot.t{background:var(--teal)}.dot.a{background:var(--amber)}.dot.r{background:var(--red)}
+.overview{margin:24px 0;padding:16px 18px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.flowline{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}
+.flowline span.node{padding:4px 10px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line);color:var(--fg-dim)}
+.flowline span.node.hot{border-color:#5a4118;color:var(--amber);background:#261d0c}
+.flowline i{color:var(--fg-mute);font-style:normal}
+section.phase{margin:40px 0 0;scroll-margin-top:20px}
+.phase-head{display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.phase-no{font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:5px;background:var(--panel-2);border:1px solid var(--line);color:var(--fg-dim)}
+.phase-head h2{margin:0;font-size:18px;font-weight:500}
+.phase-head .gate{margin-left:auto;font-size:12px;color:var(--fg-mute)}
+.phase-note{color:var(--fg-dim);font-size:13px;margin:12px 0 0;max-width:800px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+.step.warn{border-color:#5a4118}.step.block{border-color:#5a1e1e;background:linear-gradient(0deg,#1a1010,#161b22)}
+.step-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:4px}
+.step-id{font-family:var(--mono);font-size:12px;color:var(--fg-mute);min-width:34px;padding-top:2px}
+.step-title{font-size:15px;font-weight:500;margin:0;flex:1}
+.tags{display:flex;gap:6px}
+.tag{font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--line);color:var(--fg-dim)}
+.tag.auto{border-color:#1d4a2c;color:var(--teal);background:#0d1f14}
+.tag.man{border-color:#3d2f10;color:var(--amber);background:#1f1708}
+.tag.blk{border-color:#5a1e1e;color:var(--red);background:#1f0f0f}
+.step-body{margin-left:46px}
+.step-body>p{margin:6px 0;color:var(--fg-dim)}
+pre{margin:10px 0;padding:12px 14px;background:#0b0f14;border:1px solid var(--line-soft);border-radius:7px;overflow-x:auto;color:#c9d1d9;line-height:1.55}
+pre .cm{color:#6e7681}pre .k{color:#ff7b72}pre .s{color:#a5d6ff}pre .v{color:#79c0ff}
+code.inl{background:var(--panel-2);border:1px solid var(--line-soft);padding:1px 5px;border-radius:4px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{color:var(--fg-mute);font-weight:500;font-size:12px}
+.expect,.fail{display:flex;gap:10px;margin:10px 0 0;padding:10px 12px;border-radius:7px;font-size:13px}
+.expect{background:#0d1f14;border:1px solid #1d4a2c}.expect .lbl{color:var(--teal);flex:none;font-weight:500}
+.fail{background:#1f0f0f;border:1px solid #5a1e1e}.fail .lbl{color:var(--red);flex:none;font-weight:500}
+.callout{margin:14px 0;padding:12px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:13px;color:var(--fg-dim)}
+.callout.amber{border-color:#5a4118;background:#1a1508}.callout.amber .ct{color:var(--amber)}
+.callout.red{border-color:#5a1e1e;background:#1a1010}.callout.red .ct{color:var(--red)}
+.ct{display:block;font-weight:500;margin-bottom:5px}
+ul.tight{margin:8px 0;padding-left:20px;color:var(--fg-dim)}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--fg-mute);font-size:12px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}nav.toc{display:none}.step-body{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>vault-base · 安装部署手册</h1>
+  <p class="sub">
+    从公开仓库 clone，落到用户级 <code class="inl">common-skills-repo</code>，再联接到各 IDE skills 目录。
+    本地 Vault + 共享金库（Redis / MySQL）按阶段推进；橙色步骤含外部依赖（运维 / DBA）。
+  </p>
+  <div class="meta">
+    <span class="chip"><span class="dot b"></span>真相源 <b>~/common-skills-repo/vault-base</b></span>
+    <span class="chip"><span class="dot t"></span>IDE <b>Cursor / Claude / Codex 联接</b></span>
+    <span class="chip"><span class="dot a"></span>事件后端 <b>Redis LIST</b>（无 Stream 时）</span>
+    <span class="chip">阶段数 <b>8</b></span>
+  </div>
+</header>
+
+<div class="overview">
+  <h2 style="margin:0 0 12px;font-size:13px;color:var(--fg-dim);font-weight:500">安装流程总览</h2>
+  <div class="flowline">
+    <span class="node hot">0 Clone</span><i>→</i>
+    <span class="node hot">1 common 仓 + IDE 联接</span><i>→</i>
+    <span class="node">2 物料清单</span><i>→</i>
+    <span class="node">3 本地骨架</span><i>→</i>
+    <span class="node hot">4 凭据与探测</span><i>→</i>
+    <span class="node hot">5 共享库</span><i>→</i>
+    <span class="node">6 清单 / 消费</span><i>→</i>
+    <span class="node">7 验收</span>
+  </div>
+  <p style="margin:12px 0 0;font-size:13px;color:var(--fg-dim)">
+    <b>不要</b>把 skill 只拷进某一个 IDE 目录当真相源。公共条目入库走共享 Redis/MySQL；
+    本机只维护一份 common 仓 + 多 IDE 联接。
+  </p>
+</div>
+
+<div class="layout">
+<nav class="toc">
+  <p class="toc-title">目录</p>
+  <a href="#p0">0 · Clone</a>
+  <a href="#p1">1 · common 仓与 IDE</a>
+  <a href="#p2">2 · 物料清单</a>
+  <a href="#p3">3 · 本地骨架</a>
+  <a href="#p4">4 · 凭据与探测</a>
+  <a href="#p5">5 · 共享库建设</a>
+  <a href="#p6">6 · 清单与消费</a>
+  <a href="#p7">7 · 验收</a>
+  <a href="#safe">脱敏与安全</a>
+</nav>
+<main>
+
+<section class="phase" id="p0">
+  <div class="phase-head">
+    <span class="phase-no">阶段 0</span>
+    <h2>Clone 公开仓库</h2>
+    <span class="gate">产出：本机拿到脱敏后的 vault-base 源码</span>
+  </div>
+  <p class="phase-note">仓库公开、不含真实主机 / 密码 / 组私有目录。凭据与组清单只在本机生成。</p>
+
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">0.1</span>
+      <h3 class="step-title">Clone 到临时目录或直接进 common 仓</h3>
+      <span class="tags"><span class="tag man">人工</span></span>
+    </div>
+    <div class="step-body">
+<pre><span class="cm"># 推荐：直接 clone 到用户级 common-skills-repo</span>
+mkdir %USERPROFILE%\common-skills-repo
+cd %USERPROFILE%\common-skills-repo
+git clone https://github.com/SilenceInsect/vault-base.git vault-base
+
+<span class="cm"># 或先 clone 再由脚本迁入（见阶段 1）</span>
+git clone https://github.com/SilenceInsect/vault-base.git</pre>
+      <div class="expect"><span class="lbl">预期</span><span>目录内有 <code class="inl">SKILL.md</code>、<code class="inl">scripts/</code>、<code class="inl">docs/install.html</code>（本手册）。</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">0.2</span>
+      <h3 class="step-title">确认 Python</h3>
+      <span class="tags"><span class="tag man">人工</span></span>
+    </div>
+    <div class="step-body">
+      <p>需要可 <code class="inl">import pymysql</code> 的解释器（共享写入时）。记录其绝对路径，稍后写入物料清单。</p>
+<pre>python -c "import pymysql; print(pymysql.__version__)"</pre>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="p1">
+  <div class="phase-head">
+    <span class="phase-no">阶段 1</span>
+    <h2>common-skills-repo + IDE 联接</h2>
+    <span class="gate">产出：一份真相源 + Cursor/Claude/Codex 联接</span>
+  </div>
+  <p class="phase-note">
+    真相源固定为 <code class="inl">~/common-skills-repo/vault-base</code>（可用环境变量 <code class="inl">COMMON_SKILLS_REPO</code> 覆盖仓根）。
+    各 IDE 的 skills 目录只做 <b>junction / 联接</b>，禁止各拷一份再分叉。
+  </p>
+
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">1.1</span>
+      <h3 class="step-title">初始化 common 仓并建 IDE 联接</h3>
+      <span class="tags"><span class="tag auto">可自动</span></span>
+    </div>
+    <div class="step-body">
+<pre><span class="cm"># 若已 clone 到 ~/common-skills-repo/vault-base，只需 link</span>
+set SKILL=%USERPROFILE%\common-skills-repo\vault-base
+python %SKILL%\scripts\common_skills_repo.py init
+python %SKILL%\scripts\common_skills_repo.py link --skill vault-base --ides cursor,claude,codex --backup-existing
+python %SKILL%\scripts\common_skills_repo.py status --skill vault-base</pre>
+      <table>
+        <tr><th>IDE</th><th>联接路径</th><th>指向</th></tr>
+        <tr><td>Cursor</td><td><code>~/.cursor/skills/vault-base</code></td><td>common 仓</td></tr>
+        <tr><td>Claude</td><td><code>~/.claude/skills/vault-base</code></td><td>同上</td></tr>
+        <tr><td>Codex</td><td><code>~/.codex/skills/vault-base</code></td><td>同上</td></tr>
+      </table>
+      <div class="expect"><span class="lbl">预期</span><span><code class="inl">status</code> 显示三端均为 <code>LINK</code>，目标同一绝对路径。</span></div>
+      <div class="fail"><span class="lbl">失败</span><span>Cursor 目录被 IDE 占用无法改名 → 关掉打开该 skill 的标签页后重跑 <code>link</code>；或先 <code>robocopy /MOVE</code> 清空再 <code>mklink /J</code>。</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">1.2</span>
+      <h3 class="step-title">业务 skill 声明接入</h3>
+      <span class="tags"><span class="tag man">人工</span></span>
+    </div>
+    <div class="step-body">
+<pre>---
+name: your_business_skill
+<span class="k">accepts_brief</span>: true
+<span class="k">vault_base</span>: <span class="s">"~/common-skills-repo/vault-base"</span>
+---</pre>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="p2">
+  <div class="phase-head">
+    <span class="phase-no">阶段 2</span>
+    <h2>安装物料清单（引导提问）</h2>
+    <span class="gate">产出：teams/&lt;type&gt;/&lt;name&gt;/install-inventory.yml</span>
+  </div>
+  <p class="phase-note">
+    其他组成员安装时，skill <b>必须先引导提问补齐清单</b>，再跑 env_ensure。
+    组目录默认 Git 忽略，不会随公开仓泄露。
+  </p>
+
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">2.1</span>
+      <h3 class="step-title">init → missing → 逐项填写</h3>
+      <span class="tags"><span class="tag auto">可自动</span><span class="tag man">人工答</span></span>
+    </div>
+    <div class="step-body">
+<pre>set SKILL=%USERPROFILE%\common-skills-repo\vault-base
+python %SKILL%\scripts\install_inventory.py init --id <span class="s">"&lt;team-type&gt;:&lt;team-name&gt;"</span>
+python %SKILL%\scripts\install_inventory.py missing --id <span class="s">"&lt;team-type&gt;:&lt;team-name&gt;"</span>
+python %SKILL%\scripts\install_inventory.py validate --id <span class="s">"&lt;team-type&gt;:&lt;team-name&gt;"</span></pre>
+      <p>英文短名（清单内带中文注释）：</p>
+      <table>
+        <tr><th>短名</th><th>含义</th></tr>
+        <tr><td><code>local_only</code></td><td>仅本地 Vault</td></tr>
+        <tr><td><code>local_then_shared</code></td><td>先本地后共享（推荐）</td></tr>
+        <tr><td><code>shared_full</code></td><td>直接共享全量</td></tr>
+        <tr><td><code>unknown / requested / done / blocked</code></td><td>协调项状态</td></tr>
+      </table>
+      <div class="callout amber">
+        <span class="ct">密码位置</span>
+        清单里密码字段留空或写 <code class="inl">&lt;in_secrets&gt;</code>；真实密码只进
+        <code class="inl">references/vault/_kb/secrets.local.json</code>（已在 .gitignore）。
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="p3">
+  <div class="phase-head">
+    <span class="phase-no">阶段 3</span>
+    <h2>本地骨架</h2>
+    <span class="gate">产出：Vault 目录 + 本地 Git + 依赖</span>
+  </div>
+  <p class="phase-note">不依赖共享 Redis/MySQL，可与 DBA 协调并行。</p>
+
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">3.1</span>
+      <h3 class="step-title">env_ensure + readiness</h3>
+      <span class="tags"><span class="tag auto">可自动</span></span>
+    </div>
+    <div class="step-body">
+<pre>set SKILL=%USERPROFILE%\common-skills-repo\vault-base
+python %SKILL%\scripts\env_ensure.py
+python %SKILL%\scripts\readiness_gate.py --fix --json</pre>
+      <div class="expect"><span class="lbl">预期</span><span><code>can_write_local=true</code>；共享未就绪时 <code>can_write_shared=false</code> 且禁止一切共享写入。</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="p4">
+  <div class="phase-head">
+    <span class="phase-no">阶段 4</span>
+    <h2>凭据与环境探测</h2>
+    <span class="gate">产出：secrets.local.json + 能力基线</span>
+  </div>
+
+  <div class="step warn">
+    <div class="step-head">
+      <span class="step-id">4.1</span>
+      <h3 class="step-title">填写本机凭据（脱敏模板）</h3>
+      <span class="tags"><span class="tag man">人工</span><span class="tag blk">勿入库</span></span>
+    </div>
+    <div class="step-body">
+<pre><span class="cm"># 从示例复制后填真实值 —— 真实 host/密码禁止提交公开仓</span>
+copy assets\secrets.local.json.example references\vault\_kb\secrets.local.json
+
+{
+  <span class="s">"sections"</span>: {
+    <span class="s">"mysql_shared"</span>: {
+      <span class="s">"host"</span>: <span class="s">"&lt;SHARED_MYSQL_HOST&gt;"</span>,
+      <span class="s">"port"</span>: <span class="s">"3306"</span>,
+      <span class="s">"user"</span>: <span class="s">"&lt;USER&gt;"</span>,
+      <span class="s">"password"</span>: <span class="s">"&lt;PASSWORD&gt;"</span>,
+      <span class="s">"database"</span>: <span class="s">"&lt;SHARED_DB_NAME&gt;"</span>
+    }
+  },
+  <span class="s">"redis"</span>: {
+    <span class="s">"host"</span>: <span class="s">"&lt;SHARED_REDIS_HOST&gt;"</span>,
+    <span class="s">"port"</span>: <span class="v">6379</span>,
+    <span class="s">"db"</span>: <span class="v">0</span>,
+    <span class="s">"password"</span>: <span class="s">""</span>
+  }
+}</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">4.2</span>
+      <h3 class="step-title">只读探测</h3>
+      <span class="tags"><span class="tag auto">可自动</span></span>
+    </div>
+    <div class="step-body">
+<pre>python %SKILL%\scripts\env_probe.py --json</pre>
+      <p>关注：Redis 是否支持 Stream、AOF / requirepass、MySQL 版本与字符集、同实例其他库数量（影响 DDL 评估）。</p>
+      <div class="callout red">
+        <span class="ct">R4 身份回读</span>
+        不能只判断「连接没抛错」；必须回读实际连接身份。连错身份却仍写共享 Redis，会导致发号/缓存污染。
+      </div>
+    </div>
+  </div>
+
+  <div class="step warn">
+    <div class="step-head">
+      <span class="step-id">4.3</span>
+      <h3 class="step-title">外部协调项（X-*）</h3>
+      <span class="tags"><span class="tag man">人工</span><span class="tag blk">阻塞</span></span>
+    </div>
+    <div class="step-body">
+      <table>
+        <tr><th>编号</th><th>事项</th><th>说明</th></tr>
+        <tr><td><b>X-4</b></td><td>建共享库权限</td><td>无库则共享持久层无法落地</td></tr>
+        <tr><td><b>X-5</b></td><td>DDL 影响面评估</td><td>同实例若有业务库须评估</td></tr>
+        <tr><td>X-1</td><td>Redis AOF</td><td>不开则宕机可能丢事件</td></tr>
+        <tr><td>X-2</td><td>Redis requirepass</td><td>与客户端配置同步</td></tr>
+        <tr><td>X-7</td><td>VCS 提交闸门</td><td>防止 secrets 入库</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="p5">
+  <div class="phase-head">
+    <span class="phase-no">阶段 5</span>
+    <h2>共享库建设</h2>
+    <span class="gate">产出：共享 schema 可用</span>
+  </div>
+  <div class="step block">
+    <div class="step-head">
+      <span class="step-id">5.1</span>
+      <h3 class="step-title">执行 DDL（需 X-4 / X-5）</h3>
+      <span class="tags"><span class="tag man">人工</span><span class="tag blk">阻塞</span></span>
+    </div>
+    <div class="step-body">
+<pre>mysql -h <span class="v">&lt;SHARED_MYSQL_HOST&gt;</span> -u <span class="v">&lt;USER&gt;</span> -p \
+  &lt; assets/ddl_mysql57.sql</pre>
+      <p>DDL 见 <code class="inl">assets/ddl_mysql57.sql</code>。库名以团队约定为准，写入清单与 secrets，勿把内网地址写进公开文档。</p>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="p6">
+  <div class="phase-head">
+    <span class="phase-no">阶段 6</span>
+    <h2>任务清单与事件消费</h2>
+    <span class="gate">产出：briefs + 可消费事件通道</span>
+  </div>
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">6.1</span>
+      <h3 class="step-title">brief 与沉淀</h3>
+      <span class="tags"><span class="tag auto">可自动</span></span>
+    </div>
+    <div class="step-body">
+<pre>python %SKILL%\scripts\brief_bootstrap.py --skill-dir &lt;业务skill&gt; --skill-id &lt;id&gt;
+python %SKILL%\scripts\vault_dump.py --skill-id &lt;id&gt; --doc-type answer \
+  --title "..." --question "..." --answer "..." [--shared]</pre>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">6.2</span>
+      <h3 class="step-title">扫描 / 入队 / 消费</h3>
+      <span class="tags"><span class="tag auto">可自动</span></span>
+    </div>
+    <div class="step-body">
+<pre>python %SKILL%\scripts\vault_scan.py --user &lt;账号&gt;
+python %SKILL%\scripts\vault_consume.py --user &lt;账号&gt; --mode session --once</pre>
+      <p>Redis 无 Stream 时使用 LIST 后端（配置 <code class="inl">event_backend: redis_list</code>）。</p>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="p7">
+  <div class="phase-head">
+    <span class="phase-no">阶段 7</span>
+    <h2>验收</h2>
+    <span class="gate">产出：可写本地；共享按权限可达</span>
+  </div>
+  <div class="step">
+    <div class="step-head">
+      <span class="step-id">7.1</span>
+      <h3 class="step-title">检查清单</h3>
+      <span class="tags"><span class="tag man">人工</span></span>
+    </div>
+    <div class="step-body">
+      <ul class="tight">
+        <li><code>common_skills_repo.py status</code> → 所需 IDE 均为 LINK</li>
+        <li><code>install_inventory.py validate</code> → 必填项齐</li>
+        <li><code>readiness_gate.py --json</code> → 无意外 BLOCKER</li>
+        <li>本地可 <code>vault_dump</code>；共享开启后 <code>can_write_shared=true</code> 再写共享</li>
+        <li><code>secrets.local.json</code> 未被 git status 列出</li>
+      </ul>
+<pre>python %SKILL%\scripts\vault_admin.py doctor
+python %SKILL%\scripts\vault_admin.py stats</pre>
+    </div>
+  </div>
+</section>
+
+<section class="phase" id="safe">
+  <div class="phase-head">
+    <span class="phase-no">附录</span>
+    <h2>脱敏与安全</h2>
+    <span class="gate">公开仓边界</span>
+  </div>
+  <div class="step">
+    <div class="step-body" style="margin-left:0">
+      <table>
+        <tr><th>可公开</th><th>禁止公开</th></tr>
+        <tr><td>SKILL / scripts / 模板 / DDL / 本手册</td><td>真实 host、账号、密码</td></tr>
+        <tr><td>占位符示例（<code>&lt;SHARED_*&gt;</code>）</td><td><code>secrets.local.json</code>、组 <code>install-inventory.yml</code> 实填</td></tr>
+        <tr><td><code>teams/_template/</code></td><td><code>teams/&lt;真实组&gt;/</code> 私有笔记与路径</td></tr>
+        <tr><td>空 Vault 骨架 / sample briefs</td><td>业务 answers / decisions 原文</td></tr>
+      </table>
+      <p style="color:var(--fg-dim)">本机路径一律用 <code class="inl">~/common-skills-repo</code> 或环境变量，不要把个人用户名目录写进公开文档。</p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  vault-base 安装部署手册 · 与仓库 <code>docs/install.html</code> 同步 · 凭据与组私有信息仅存本机
+</footer>
+</div>
+<script>
+document.querySelectorAll('nav.toc a').forEach(a=>{
+  a.addEventListener('click',()=>{
+    document.querySelectorAll('nav.toc a').forEach(x=>x.classList.remove('on'));
+    a.classList.add('on');
+  });
+});
+</script>
+</body>
+</html>

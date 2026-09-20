@@ -1,0 +1,93 @@
+# 共享金库安装信息 · 物料清单（模板）
+# 逻辑归属：team-type:team-name → teams/<type>/<name>/install-inventory.yml
+# 用法：复制本文件到组目录后，由 vault-base skill 逐项提问补齐；勿把密码写进本文件的已填样例仓库。
+
+schema_version: 1
+doc_type: install_inventory
+
+# 组标识（与 teams/ 约定一致）
+team:
+  id: ""                         # 必填 例 demo-team:demo-project
+  team_type: ""                  # 必填 例 demo-team
+  team_name: ""                  # 必填 例 demo-project
+  display_name: ""               # 可选 展示名
+  owners: []                     # 可选 负责人域账号列表
+
+# 用户级公共 skill 仓（真相源；各 IDE 只建联接）
+common_skills_repo:
+  path: ""                       # 必填 默认 ~/common-skills-repo
+  skill_name: "vault-base"       # 仓内目录名
+  # 联接模式：junction 目录联接(Win推荐) | symlink 符号链接 | copy 仅拷贝(不推荐)
+  link_mode: "junction"
+  ide_links:
+    cursor: true                 # ~/.cursor/skills/<skill_name>
+    claude: true                 # ~/.claude/skills/<skill_name>
+    codex: true                  # ~/.codex/skills/<skill_name>
+    workbuddy: false             # 若本机有 WorkBuddy skills 目录再开
+
+# 安装目标
+install:
+  # 模式枚举：
+  #   local_only        — 仅本地 Vault（不连共享 Redis/MySQL）
+  #   local_then_shared — 先本地可用，再补齐共享（推荐默认）
+  #   shared_full       — 直接按共享全量安装（需 Redis+MySQL 就绪）
+  mode: "local_then_shared"      # 默认：先本地后共享
+  skill_root: ""                 # 必填 = <common_skills_repo.path>/<skill_name>
+  vault_root: ""                 # 必填 默认 <skill_root>/references/vault
+  python_exe: ""                 # 必填 带 pymysql 的解释器绝对路径
+  svn_url: ""                    # 可选 skill/Vault 纳管 SVN 地址
+  git_local_only: true           # 本地 Vault Git 禁止推远端
+
+# 共享环境（208）— 无则只能本地降级
+shared_env:
+  redis:
+    host: ""                     # 必填(共享模式) 例 <SHARED_HOST>
+    port: 6379
+    db: 0
+    password: ""                 # 敏感：写 secrets.local.json，这里可留空或填 <in_secrets>
+    requirepass_set: null        # 探测后回填 true/false
+    supports_stream: null        # 探测后回填；3.2.x 应为 false
+  mysql:
+    host: ""                     # 必填(共享模式)
+    port: 3306
+    user: ""                     # 必填(共享模式)
+    password: ""                 # 敏感：只进 secrets.local.json
+    database: "amrd_qa_vault"    # 必填(共享模式)
+    charset: "utf8mb4"
+  secrets_path: ""               # 必填(共享模式) → references/vault/_kb/secrets.local.json
+
+# 外部协调项（安装手册 X-*）
+# 状态枚举：unknown 未知 | requested 已申请 | done 已完成 | blocked 受阻
+coordination:
+  X4_create_database: "unknown"  # 建库权限：unknown|requested|done|blocked
+  X5_ddl_impact_review: "unknown"  # DDL 影响面评估
+  X1_redis_aof: "unknown"        # Redis AOF 持久化确认
+  X2_redis_requirepass: "unknown"  # Redis 口令策略确认
+  X7_svn_precommit: "unknown"    # SVN 预提交钩子确认
+  notes: ""
+
+# 本机组信息（可指向 team.yml）
+local:
+  author: ""                     # 必填 域账号/姓名
+  author_ip: ""                  # 可选 探测回填
+  machine_note: ""
+
+# 验收勾选（由脚本/skill 回写）
+checklist:
+  env_ensure_ok: false           # 环境骨架已就绪
+  readiness_ready: false         # readiness_gate 通过
+  can_write_local: false         # 可写本地 Vault
+  can_write_shared: false        # 可写共享库
+  probe_redis_ok: false          # Redis 探测通过
+  probe_mysql_ok: false          # MySQL 探测通过
+  team_workspace_created: false  # 组目录已创建
+  secrets_file_present: false    # secrets.local.json 已存在
+  ddl_applied: false             # DDL 已落地
+  common_repo_ready: false       # common-skills-repo 已建
+  ide_links_ready: false         # IDE 联接已就绪
+
+# 访谈进度：pending 待开始 | asked 已提问 | filled 已填齐 | skipped 已跳过
+interview:
+  status: "pending"              # 默认：待开始
+  missing_fields: []             # skill/脚本自动列出未填必填项
+  updated_at: ""

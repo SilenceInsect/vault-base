@@ -1,0 +1,6 @@
+_kb/*.db
+_kb/*.db-journal
+_kb/secrets.local.json
+_kb/baseline.json
+__pycache__/
+*.pyc
