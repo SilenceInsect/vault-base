@@ -2,9 +2,17 @@
 references/vault/_kb/*.db
 references/vault/_kb/baseline.json
 references/vault/_kb/last_probe.json
+references/vault/_kb/skill-catalog.json
+references/vault/_kb/skill-catalog.md
 __pycache__/
 _extract_from_plan.py
 scripts/__pycache__/
+
+# portable local tool installs under this skill (do not commit binaries)
+/Obsidian/
+/Python/
+/Git/
+/SVN/
 
 # --- team workspaces (team-type:team-name → teams/<type>/<name>/) ---
 teams/**
@@ -12,22 +20,3 @@ teams/**
 !teams/_template/
 !teams/_template/**
 !teams/svn-ignore.txt
-
-# local / private
-INSTALL-STATUS.md
-references/vault/_kb/secrets.local.json
-references/vault/_kb/*.db
-references/vault/_kb/baseline.json
-references/vault/_kb/last_probe.json
-references/vault/answers/**
-references/vault/decisions/**
-references/vault/references/**
-!references/vault/briefs/_samples/
-teams/**
-!teams/README.md
-!teams/_template/
-!teams/_template/**
-!teams/svn-ignore.txt
-__pycache__/
-*.pyc
-.DS_Store

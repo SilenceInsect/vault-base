@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vault_paths import vault_root                                   # noqa: E402
 
-DEFAULT_REDIS = {"host": "<SHARED_HOST>", "port": 6379, "db": 0}
+DEFAULT_REDIS = {"host": "198.51.100.10", "port": 6379, "db": 0}
 DEFAULT_MYSQL_SECTION = "mysql_shared"
 
 

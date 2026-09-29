@@ -52,10 +52,28 @@ def enqueue(r, user: str, events: list[dict]) -> int:
 
 
 def consume_one(r, user: str, timeout: int = 5) -> str | None:
-    """BRPOPLPUSH 原子取出，返回原始 JSON 字符串。超时返回 None。"""
+    """BRPOPLPUSH 原子取出，返回原始 JSON 字符串。超时返回 None。
+
+    注意：底层 socket timeout 必须 ≥ BRPOP 等待秒数，否则会先于 Redis 空等
+    抛出 TimeoutError（历史阻断）。此处临时抬高 socket timeout 并吞掉超时。
+    """
+    import socket
     queue, processing, _, _ = _keys(user)
-    res = r.cmd("BRPOPLPUSH", queue, processing, timeout)
-    return res if isinstance(res, str) else None
+    prev = None
+    try:
+        if hasattr(r, "sock"):
+            prev = r.sock.gettimeout()
+            r.sock.settimeout(float(timeout) + 2.0)
+        res = r.cmd("BRPOPLPUSH", queue, processing, int(timeout))
+        return res if isinstance(res, str) else None
+    except (TimeoutError, socket.timeout, OSError):
+        return None
+    finally:
+        if prev is not None and hasattr(r, "sock"):
+            try:
+                r.sock.settimeout(prev)
+            except Exception:
+                pass
 
 
 def ack(r, user: str, raw: str) -> None:

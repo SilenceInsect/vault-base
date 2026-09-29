@@ -24,7 +24,113 @@ IDE_SKILLS = {
     "cursor": Path.home() / ".cursor" / "skills",
     "claude": Path.home() / ".claude" / "skills",
     "codex": Path.home() / ".codex" / "skills",
+    # WorkBuddy：用户目录可能是 .workbuddy 或 .WorkBuddy
+    "workbuddy": Path.home() / ".workbuddy" / "skills",
 }
+
+# 判定「本机已安装该 IDE」的强信号（不能仅凭 skills/ 存在——联接脚本会创建它）
+_IDE_HOME_CANDIDATES = {
+    "cursor": [Path.home() / ".cursor"],
+    "claude": [Path.home() / ".claude"],
+    "codex": [Path.home() / ".codex"],
+    "workbuddy": [Path.home() / ".workbuddy", Path.home() / ".WorkBuddy"],
+}
+_IDE_HOME_MARKERS = {
+    "cursor": ("ide_state.json", "argv.json", "extensions", "projects", "mcp.json"),
+    # Claude：仅 skills + skill-backups + CLAUDE.md/settings 视为「未装 IDE」
+    "claude": ("projects", "history.jsonl", "statsig", "file-history", "plugins",
+               "cache", "todos", "local"),
+    "codex": ("config.toml", "sessions", "auth.json", ".codex-global-state.json",
+              "history.jsonl", "version.json"),
+    "workbuddy": ("workbuddy.db", "settings.json", "app", "sessions", "USER.md",
+                  "last-launch.json", "device-id"),
+}
+_SKILLS_ONLY_NAMES = frozenset({
+    "skills", "skill-backups", "skills-cursor", ".gitignore",
+})
+
+
+def _which(cmd: str) -> Path | None:
+    p = shutil.which(cmd)
+    return Path(p) if p else None
+
+
+def _exe_exists(candidates: list[Path]) -> bool:
+    return any(p.is_file() for p in candidates)
+
+
+def detect_ide_installed(ide: str) -> bool:
+    """本机是否安装/在用该 IDE（用于 ide_links 回填，而非模板默认全 true）。"""
+    ide = ide.lower().strip()
+    if ide not in _IDE_HOME_CANDIDATES:
+        return False
+
+    # 1) 可执行文件 / which
+    local = Path(os.environ.get("LOCALAPPDATA", ""))
+    prog = local / "Programs" if local.parts else Path()
+    exe_map = {
+        "cursor": [
+            prog / "cursor" / "Cursor.exe",
+            prog / "Cursor" / "Cursor.exe",
+            Path(r"D:\cursor\Cursor.exe"),
+            Path(r"C:\cursor\Cursor.exe"),
+        ],
+        "claude": [
+            prog / "Claude" / "Claude.exe",
+            local / "AnthropicClaude" / "claude.exe",
+            local / "claude-desktop" / "Claude.exe",
+        ],
+        "codex": [],
+        "workbuddy": [
+            local / "WorkBuddy" / "WorkBuddy.exe",
+            prog / "WorkBuddy" / "WorkBuddy.exe",
+            local / "@genieworkbuddy-desktop-updater",
+        ],
+    }
+    if _exe_exists(exe_map.get(ide, [])):
+        return True
+    if ide == "cursor" and _which("cursor"):
+        return True
+    if ide == "codex" and _which("codex"):
+        return True
+    if ide == "claude" and _which("claude"):
+        # PATH 有 claude CLI 也算在用
+        return True
+    if ide == "workbuddy" and (local / "WorkBuddy").is_dir():
+        return True
+
+    # 2) 用户目录强标记（排除仅有 skills 联接残留）
+    markers = _IDE_HOME_MARKERS.get(ide, ())
+    for home in _IDE_HOME_CANDIDATES[ide]:
+        if not home.is_dir():
+            continue
+        for name in markers:
+            if (home / name).exists():
+                return True
+        # 目录里有非 skills 残留的实质内容也算（防漏检）
+        try:
+            names = {p.name for p in home.iterdir()}
+        except OSError:
+            continue
+        extras = names - _SKILLS_ONLY_NAMES
+        # claude：仅 settings.json / CLAUDE.md 不够
+        if ide == "claude":
+            extras -= {"CLAUDE.md", "settings.json", "settings.local.json"}
+        if extras & set(markers):
+            return True
+        if ide != "claude" and len(extras) >= 3:
+            # cursor/codex/workbuddy 家目录内容丰富则视为已装
+            return True
+    return False
+
+
+def detect_ide_links() -> dict[str, bool]:
+    """返回 {cursor,claude,codex,workbuddy: bool}，供物料清单回填。"""
+    # workbuddy skills 路径：优先已存在的家目录
+    wb_home = Path.home() / ".workbuddy"
+    if not wb_home.is_dir() and (Path.home() / ".WorkBuddy").is_dir():
+        IDE_SKILLS["workbuddy"] = Path.home() / ".WorkBuddy" / "skills"
+    return {ide: detect_ide_installed(ide) for ide in IDE_SKILLS}
 
 
 def default_common_root() -> Path:
@@ -223,20 +329,38 @@ def cmd_migrate(args) -> int:
     return 0
 
 
+def resolve_ide_skills_root(ide: str) -> Path:
+    """解析 IDE skills 目录；workbuddy 兼容 .workbuddy / .WorkBuddy。"""
+    if ide == "workbuddy":
+        for home in (Path.home() / ".workbuddy", Path.home() / ".WorkBuddy"):
+            if home.is_dir():
+                return home / "skills"
+        return Path.home() / ".workbuddy" / "skills"
+    return IDE_SKILLS[ide]
+
+
 def cmd_link(args) -> int:
     common = Path(args.path).expanduser().resolve() if args.path else default_common_root()
     dest = skill_dir(common, args.skill)
     if not dest.is_dir():
         print("common skill missing, migrate first:", dest, file=sys.stderr)
         return 2
-    ides = [x.strip() for x in (args.ides or "cursor,claude,codex").split(",") if x.strip()]
+    raw = (args.ides or "auto").strip().lower()
+    if raw in ("auto", "detected", "*"):
+        links = detect_ide_links()
+        ides = [k for k, v in links.items() if v]
+        print("auto ides (installed):", ",".join(ides) or "(none)")
+    else:
+        ides = [x.strip() for x in raw.split(",") if x.strip()]
     rc = 0
     for ide in ides:
         if ide not in IDE_SKILLS:
             print("unknown ide:", ide, file=sys.stderr)
             rc = 2
             continue
-        link = IDE_SKILLS[ide] / args.skill
+        skills_root = resolve_ide_skills_root(ide)
+        skills_root.mkdir(parents=True, exist_ok=True)
+        link = skills_root / args.skill
         try:
             if link.exists() and not _is_reparse_point(link):
                 if args.backup_existing:
@@ -281,15 +405,19 @@ def cmd_status(args) -> int:
     dest = skill_dir(common, args.skill)
     print("COMMON_SKILLS_REPO:", common)
     print("skill:", dest, "exists=" + str(dest.is_dir()))
-    for ide, root in IDE_SKILLS.items():
+    detected = detect_ide_links()
+    for ide in IDE_SKILLS:
+        root = resolve_ide_skills_root(ide)
         link = root / args.skill
+        inst = "installed" if detected.get(ide) else "not_installed"
         if not link.exists() and not _is_reparse_point(link):
-            print("  %s: MISSING %s" % (ide, link))
+            print("  %s: MISSING (%s) %s" % (ide, inst, link))
             continue
         if _is_reparse_point(link):
-            print("  %s: LINK %s -> %s" % (ide, link, _resolve_link_target(link)))
+            print("  %s: LINK (%s) %s -> %s"
+                  % (ide, inst, link, _resolve_link_target(link)))
         else:
-            print("  %s: REAL_DIR %s" % (ide, link))
+            print("  %s: REAL_DIR (%s) %s" % (ide, inst, link))
     return 0
 
 
@@ -319,7 +447,11 @@ def main() -> int:
     p = sub.add_parser("link")
     p.add_argument("--skill", default="vault-base")
     p.add_argument("--path")
-    p.add_argument("--ides", default="cursor,claude,codex")
+    p.add_argument(
+        "--ides",
+        default="auto",
+        help="逗号列表，或 auto（默认：仅联接本机已安装的 IDE）",
+    )
     p.add_argument(
         "--backup-existing",
         action="store_true",

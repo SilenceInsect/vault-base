@@ -7,9 +7,9 @@ doc_type: install_inventory
 
 # 组标识（与 teams/ 约定一致）
 team:
-  id: ""                         # 必填 例 demo-team:demo-project
-  team_type: ""                  # 必填 例 demo-team
-  team_name: ""                  # 必填 例 demo-project
+  id: ""                         # 必填 例 test-team:amrd-test
+  team_type: ""                  # 必填 例 test-team
+  team_name: ""                  # 必填 例 amrd-test
   display_name: ""               # 可选 展示名
   owners: []                     # 可选 负责人域账号列表
 
@@ -17,28 +17,83 @@ team:
 common_skills_repo:
   path: ""                       # 必填 默认 ~/common-skills-repo
   skill_name: "vault-base"       # 仓内目录名
-  # 联接模式：junction 目录联接(Win推荐) | symlink 符号链接 | copy 仅拷贝(不推荐)
-  link_mode: "junction"
+  # ------------------------------------------------------------------
+  # link_mode 枚举（三选一；打开本文件即可看到，不必翻别处）
+  #   junction — Windows 目录联接（推荐；mklink /J，通常无需管理员）
+  #   symlink  — 符号链接（跨平台；Windows 常需开发者模式或管理员）
+  #   copy     — 仅拷贝到 IDE 目录（易与真相源分叉，不推荐）
+  # 出处索引：
+  #   - 字段说明 → references/install-inventory.md §「联接模式 link_mode」
+  #   - 实现逻辑 → scripts/common_skills_repo.py（create_junction / link）
+  # ------------------------------------------------------------------
+  link_mode: "junction"          # 枚举见上；默认 junction
+  # ide_links：按本机是否安装 IDE 设值（init / refresh-ide-links 探测）
+  # 出处：scripts/common_skills_repo.py detect_ide_links()
   ide_links:
-    cursor: true                 # ~/.cursor/skills/<skill_name>
-    claude: true                 # ~/.claude/skills/<skill_name>
-    codex: true                  # ~/.codex/skills/<skill_name>
-    workbuddy: false             # 若本机有 WorkBuddy skills 目录再开
+    cursor: false
+    claude: false
+    codex: false
+    workbuddy: false
 
 # 安装目标
 install:
-  # 模式枚举：
-  #   local_only        — 仅本地 Vault（不连共享 Redis/MySQL）
-  #   local_then_shared — 先本地可用，再补齐共享（推荐默认）
-  #   shared_full       — 直接按共享全量安装（需 Redis+MySQL 就绪）
-  mode: "local_then_shared"      # 默认：先本地后共享
-  skill_root: ""                 # 必填 = <common_skills_repo.path>/<skill_name>
-  vault_root: ""                 # 必填 默认 <skill_root>/references/vault
-  python_exe: ""                 # 必填 带 pymysql 的解释器绝对路径
+  # ------------------------------------------------------------------
+  # install.mode：shared_full(共享优先) / local_only(本地降级) /
+  #               local_then_shared(显式双写，兼容)
+  # bootstrap probe-connection 按 Redis+MySQL 探活回写 mode。
+  # 出处：references/install-inventory.md §「安装模式 install.mode」
+  # ------------------------------------------------------------------
+  mode: "shared_full"            # 默认共享优先
+  skill_root: ""                 # 建议 = <common_skills_repo.path>/<skill_name>
+  vault_root: ""                 # local_only 必填；shared_full 可空
+  python_exe: ""                 # local_only / local_then_shared 必填
   svn_url: ""                    # 可选 skill/Vault 纳管 SVN 地址
   git_local_only: true           # 本地 Vault Git 禁止推远端
 
-# 共享环境（208）— 无则只能本地降级
+  # ---- 本机可安装组件 ----
+  # 约定：enabled=true 且本机不满足 min_accept → 按 default_version 装到 install_path（默认在 skill 目录下）
+  #       本机已满足 min_accept → 复用，不强制重装；pip 包无独立 install_path（进 python_exe 环境）
+
+  python:
+    enabled: true                # 默认安装（本机无满足版本时）
+    min_accept: "3.10"           # 本机已有 ≥3.10 可复用
+    default_version: "3.11.5"    # 需新装时目标：3.11.5+
+    install_path: ""             # 默认 <skill_root>/Python；空则用该默认
+
+  git:
+    enabled: true                # clone / 增量扫描依赖（E3）
+    min_accept: "2.30.0"         # 本机已有 ≥2.30 可复用
+    default_version: "2.47.1"    # 需新装时目标版本
+    install_path: ""             # 默认 <skill_root>/Git；空则用该默认
+    exe: ""                      # 解析回填 git.exe
+
+  # pip 包：装进 install.python_exe 环境；无独立目录。env_ensure 可自动补齐。
+  pip:
+    pymysql:
+      enabled: true              # 共享 MySQL（E2）；本地-only 可暂缺
+      min_accept: ""             # 已装任意版本即可
+      default_version: ""        # 空=pip 最新
+    pyyaml:
+      enabled: true              # 清单完整写回；无则脚本走迷你解析（只读）
+      min_accept: ""
+      default_version: ""        # 空=pip 最新
+
+  # Obsidian 客户端（Markdown Vault 浏览/编辑；脚本读写不依赖客户端）
+  obsidian:
+    enabled: true                # 是否安装 Obsidian；默认 true
+    min_accept: ""               # 已装任意版本可复用
+    default_version: "latest"    # 官方最新稳定版
+    install_path: ""             # 默认 <skill_root>/Obsidian；空则用该默认
+
+  # SVN 客户端（可选；仅 svn_url / X7 时需要）
+  svn:
+    enabled: false               # 默认不装
+    min_accept: "1.14.0"
+    default_version: "1.14.5"
+    install_path: ""             # 默认 <skill_root>/SVN；空则用该默认
+    exe: ""                      # 解析回填 svn.exe
+
+# 共享环境（208）— 无则只能本地降级；不在本机安装，无 install_path
 shared_env:
   redis:
     host: ""                     # 必填(共享模式) 例 <SHARED_HOST>
@@ -47,6 +102,8 @@ shared_env:
     password: ""                 # 敏感：写 secrets.local.json，这里可留空或填 <in_secrets>
     requirepass_set: null        # 探测后回填 true/false
     supports_stream: null        # 探测后回填；3.2.x 应为 false
+    # 服务端版本约定（运维侧，非本机安装）：3.2.12 → LIST 后端
+    expected_version: "3.2.12"
   mysql:
     host: ""                     # 必填(共享模式)
     port: 3306
@@ -54,7 +111,31 @@ shared_env:
     password: ""                 # 敏感：只进 secrets.local.json
     database: "amrd_qa_vault"    # 必填(共享模式)
     charset: "utf8mb4"
+    # 客户端用 pymysql；服务端版本由 DBA 管理，本机不装 mysqld
+    expected_charset: "utf8mb4"
   secrets_path: ""               # 必填(共享模式) → references/vault/_kb/secrets.local.json
+
+# 旧知识金库发现与纳入（安装后探测；有则须纳入同步计划，禁止静默忽略）
+# sync_policy:
+#   review_then_import — 默认：导入待审队列，人工审核进 shared_vault_main
+#   import_pending     — 直接进 pending
+#   skip               — 显式跳过（须填 skip_reason）
+legacy_vaults:
+  discover_on_install: true      # 安装/探测时扫描已知旧库
+  sync_required_if_found: true   # 发现旧库则必须纳入（或显式 skip）
+  sources:
+    - id: "amrd_qa_kb"
+      kind: "bug-vault"          # bug-vault / 旧 KB
+      mysql_database: "amrd_qa_kb"
+      redis_prefix: "kb:"
+      local_path: ""             # 例 <local-kb-root>/bug-vault；探测后回填
+      schema_meta_key: "schema_version"  # kb_meta
+      enabled: true
+      sync_policy: "review_then_import"
+      skip_reason: ""
+      discovered: null           # 探测回填 true/false
+      last_sync_at: ""
+      notes: "与 vault-base 边界隔离；纳入时映射为 answer/decision，锚点索引可分期迁"
 
 # 外部协调项（安装手册 X-*）
 # 状态枚举：unknown 未知 | requested 已申请 | done 已完成 | blocked 受阻
@@ -85,6 +166,14 @@ checklist:
   ddl_applied: false             # DDL 已落地
   common_repo_ready: false       # common-skills-repo 已建
   ide_links_ready: false         # IDE 联接已就绪
+  python_ready: false            # Python ≥min_accept 或已按 default_version 安装
+  git_ready: false               # Git 可用
+  pip_pymysql_ok: false          # pymysql 已装入 python_exe
+  pip_pyyaml_ok: false           # PyYAML 已装入 python_exe
+  obsidian_installed: false      # Obsidian 已按清单安装
+  svn_ready: false               # SVN 可用（仅 enabled 时）
+  legacy_vaults_scanned: false   # 已扫描旧库（amrd_qa_kb 等）
+  legacy_vaults_synced_or_skipped: false  # 旧库已纳入或显式 skip
 
 # 访谈进度：pending 待开始 | asked 已提问 | filled 已填齐 | skipped 已跳过
 interview:

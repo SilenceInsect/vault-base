@@ -1,5 +1,5 @@
 # 在 SVN 工作副本中于 teams/ 目录执行：
 #   svn propset svn:ignore "*" .
 # 或运行: python scripts/team_workspace.py fix-ignores
-# 效果：忽略未纳入版本的组目录（如 demo-team/）；
+# 效果：忽略未纳入版本的组目录（如 test-team/）；
 # 已 add 的 README.md、_template/ 仍受版本管理。

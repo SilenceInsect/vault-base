@@ -14,5 +14,16 @@
   "degrade": {
     "probe_timeout_ms": 2000,
     "allow_offline": true
+  },
+  "laya": {
+    "enabled": false,
+    "mock": false,
+    "model": "typed-decisions",
+    "base_url": "http://127.0.0.1:8000",
+    "api_path": "/v1/systemone",
+    "timeout_seconds": 30,
+    "share_min_confidence": 0.75,
+    "sensitive_noul_threshold": 0.7,
+    "require_api_key": false
   }
 }

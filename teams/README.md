@@ -1,13 +1,13 @@
 # 项目 / 组私有工作区（team-type:team-name）
 
 逻辑标识：`{team-type}:{team-name}`  
-例：`demo-team:demo-project`
+例：`test-team:amrd-test`
 
 磁盘路径（Windows 不能用 `:` 做目录名）：
 
 ```text
 teams/{team-type}/{team-name}/
-→ teams/demo-team/demo-project/
+→ teams/test-team/amrd-test/
 ```
 
 ## 用途
@@ -24,9 +24,9 @@ teams/{team-type}/{team-name}/
 ## 新建一组
 
 ```bash
-python scripts/team_workspace.py init --id "demo-team:demo-project"
+python scripts/team_workspace.py init --id "test-team:amrd-test"
 # 或
-python scripts/team_workspace.py init --type demo-team --name demo-project
+python scripts/team_workspace.py init --type test-team --name amrd-test
 ```
 
 会创建目录、从 `_template/` 拷贝 `team.yml`，并尽量补齐忽略规则。
@@ -34,7 +34,7 @@ python scripts/team_workspace.py init --type demo-team --name demo-project
 ## 忽略规则
 
 - **Git**：根目录 `.gitignore` 忽略 `teams/**`，但保留本 README 与 `_template/`。
-- **SVN**：对 `teams/` 设置 `svn:ignore=*`（已版本管理的 README / `_template` 不受影响；新建的 `demo-team/` 等不会被误提交）。
+- **SVN**：对 `teams/` 设置 `svn:ignore=*`（已版本管理的 README / `_template` 不受影响；新建的 `test-team/` 等不会被误提交）。
 
 ```bash
 python scripts/team_workspace.py fix-ignores

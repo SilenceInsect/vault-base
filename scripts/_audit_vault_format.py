@@ -127,11 +127,11 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     check_vault(
-        Path(r"C:\Users\<USER>\.cursor\skills\req-code-consistency\references\vault"),
+        Path(r"C:\Users\<user>\.cursor\skills\req-code-consistency\references\vault"),
         "req-code-consistency 本地金库",
     )
     check_vault(
-        Path(r"C:\Users\<USER>\.cursor\skills\vault-base\references\vault"),
+        Path(r"C:\Users\<user>\.cursor\skills\vault-base\references\vault"),
         "vault-base 底座金库",
     )
     print("\n规范摘要 (vault-base 3.1/3.2/3.6):")

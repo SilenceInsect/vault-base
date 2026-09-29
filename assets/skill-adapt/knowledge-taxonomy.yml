@@ -1,0 +1,70 @@
+# vault-base 知识分类与持久化目标（业务 skill 适配后共用）
+schema_version: 1
+doc_type: knowledge_taxonomy
+
+# 审核态
+review_status:
+  - id: pending_human
+    label: 人工待审
+    persist: [mysql_pending, local_yaml]
+  - id: human_reviewed
+    label: 人工已审
+    persist: [mysql_main, redis_vault_c, local_yaml]
+
+# 可见性
+visibility:
+  - id: private
+    label: 私有知识
+    is_candidate_shared: false
+  - id: public_shared
+    label: 公共知识
+    is_candidate_shared: true
+
+# 知识种类（沉淀时必填一类）
+kinds:
+  - id: reusable_decision
+    label: 可复用决策（岗位决策能力）
+    doc_type: decision
+    scenario_required: true
+  - id: scenario_decision
+    label: 特定场景（业务）决策
+    doc_type: decision
+    scenario_required: true
+  - id: business_flow
+    label: 业务流执行链路
+    doc_type: reference
+    fields: [min_chain, full_chain, tools, confidence]
+  - id: exec_logic
+    label: 跨会话可复用执行逻辑
+    doc_type: reference
+  - id: tool_call_logic
+    label: 工具调用逻辑
+    doc_type: reference
+  - id: goal_attainment
+    label: 目标达成逻辑
+    doc_type: reference
+  - id: quality_uplift
+    label: 结果产出质量提高逻辑
+    doc_type: reference
+  - id: result_html
+    label: 结果 HTML 结构化摘要
+    doc_type: answer
+
+# 结构化产物字段（业务流 / 执行类）
+structured_payload_fields:
+  - confidence          # 0~1
+  - min_exec_chain      # 最小执行链路（步骤列表）
+  - full_exec_chain     # 完整执行链路
+  - tools_used          # 工具调用清单
+  - html_report_path    # 本地/远程 HTML 路径
+  - scenario            # 知识场景标签
+  - skill_id
+  - share_scope         # private | shared
+
+# 落盘
+landing:
+  local_skill_vault: references/vault/{answers|decisions|references}/
+  local_kb: references/vault/_kb/
+  redis: "vault:c:"
+  mysql: amrd_qa_vault
+  remote_web: WebPlatform VaultBase（扫描/人审/Laya 训练）

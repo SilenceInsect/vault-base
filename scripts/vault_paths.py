@@ -19,6 +19,17 @@ DEFAULT_CONFIG = {
     "retrieval": {"min_score": 0.35, "emit_low_confidence_hint": True},
     "redact": {"enabled": True, "force_private_on_hit": True},
     "degrade": {"probe_timeout_ms": 2000, "allow_offline": True},
+    "laya": {
+        "enabled": False,
+        "mock": False,
+        "model": "typed-decisions",
+        "base_url": "http://127.0.0.1:8000",
+        "api_path": "/v1/systemone",
+        "timeout_seconds": 30,
+        "share_min_confidence": 0.75,
+        "sensitive_noul_threshold": 0.70,
+        "require_api_key": False,
+    },
 }
 
 
@@ -48,11 +59,14 @@ def skill_root() -> Path:
 
 
 def vault_root(explicit: str | None = None) -> Path:
-    """返回 Vault 根目录的绝对路径。
+    """返回 Vault 根目录的绝对路径（不一定已存在）。
 
     1. 显式参数（命令行 --vault）
     2. 环境变量 VAULT_ROOT
     3. <skill_root>/references/vault（优先 common-skills-repo）
+
+    shared_full 且未建本地仓时，路径可能不存在；调用方应用
+    ``local_vault_available`` 判断是否叠读本地 MD。
     """
     if explicit:
         return Path(explicit).expanduser().resolve()
@@ -60,6 +74,12 @@ def vault_root(explicit: str | None = None) -> Path:
     if env:
         return Path(env).expanduser().resolve()
     return skill_root() / "references" / "vault"
+
+
+def local_vault_available(root: Path | None = None) -> bool:
+    """本地文件仓是否可用（目录存在即可；shared_full 可跳过本地仓）。"""
+    r = root or vault_root()
+    return r.is_dir()
 
 
 def config_path(root: Path | None = None) -> Path:

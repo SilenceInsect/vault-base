@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vault_paths import ensure_dirs, vault_root, write_default_config, write_meta  # noqa: E402
 from vault_scan import init_vault_git, run_git                                      # noqa: E402
 
-PIP_PACKAGES = {"pymysql": "pymysql"}
+PIP_PACKAGES = {"pymysql": "pymysql", "yaml": "pyyaml"}
 
 
 def ensure_package(mod: str, pkg: str) -> tuple[bool, str]:

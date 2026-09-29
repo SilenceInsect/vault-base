@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """team_workspace.py — 项目组私有目录 team-type:team-name。
 
-逻辑 ID 例：demo-team:demo-project
-磁盘路径：<skill_root>/teams/demo-team/demo-project/
+逻辑 ID 例：test-team:amrd-test
+磁盘路径：<skill_root>/teams/test-team/amrd-test/
 
 Windows 禁止路径含 ':'，故用二级目录表达。
 """
@@ -32,7 +32,7 @@ def parse_id(team_id: str) -> tuple[str, str]:
     m = ID_RE.match((team_id or "").strip())
     if not m:
         raise ValueError(
-            "id 格式须为 team-type:team-name，如 demo-team:demo-project（仅字母数字_-）"
+            "id 格式须为 team-type:team-name，如 test-team:amrd-test（仅字母数字_-）"
         )
     return m.group(1), m.group(2)
 
@@ -75,7 +75,7 @@ def ensure_svn_ignore() -> dict:
         "# 在 SVN 工作副本中于 teams/ 目录执行：\n"
         "#   svn propset svn:ignore \"*\" .\n"
         "# 或运行: python scripts/team_workspace.py fix-ignores\n"
-        "# 效果：忽略未纳入版本的组目录（如 demo-team/）；\n"
+        "# 效果：忽略未纳入版本的组目录（如 test-team/）；\n"
         "# 已 add 的 README.md、_template/ 仍受版本管理。\n",
         encoding="utf-8",
     )
@@ -159,7 +159,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_init = sub.add_parser("init", help="创建 teams/<type>/<name>/")
-    p_init.add_argument("--id", help="逻辑 ID，如 demo-team:demo-project")
+    p_init.add_argument("--id", help="逻辑 ID，如 test-team:amrd-test")
     p_init.add_argument("--type", dest="team_type", help="team-type")
     p_init.add_argument("--name", dest="team_name", help="team-name")
     p_init.add_argument("--force", action="store_true", help="覆盖 team.yml")

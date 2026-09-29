@@ -22,8 +22,8 @@ from vault_paths import load_config, vault_root                             # no
 from vault_secrets import redis_conn                                        # noqa: E402
 
 IGNORE_DIRS = {".obsidian", "_kb", "_health"}
-USER_ID = "user_01"
-SKILL_ID = "game_test_skill"
+DEFAULT_USER_ID = "user_01"
+DEFAULT_SKILL_ID = "vault-base"
 
 
 def run_git(args: list[str], cwd: Path, check: bool = True) -> str:
@@ -72,7 +72,8 @@ def parse_name_status(out: str) -> list[dict]:
     return rows
 
 
-def changed_files(base_commit: str, vault: Path) -> list[dict]:
+def changed_files(base_commit: str, vault: Path, *,
+                  user_id: str, skill_id: str) -> list[dict]:
     raw = run_git(["diff", "--name-status", "-M", base_commit, "HEAD"], vault)
     out = []
     for r in parse_name_status(raw):
@@ -89,14 +90,17 @@ def changed_files(base_commit: str, vault: Path) -> list[dict]:
                            vault, check=False) or None
 
         out.append({
-            "event_id": event_id(USER_ID, r["change_type"], r["file_path"], blob),
-            "user_id": USER_ID,
-            "skill_id": SKILL_ID,
+            "event_id": event_id(user_id, r["change_type"], r["file_path"], blob),
+            "user_id": user_id,
+            "skill_id": skill_id,
             "doc_uuid": p.stem,
             "change_type": r["change_type"],
             "old_path": r["old_path"],
             "file_path": r["file_path"],
             "blob_hash": blob,
+            "base_commit": base_commit,
+            "head_commit": head_commit(vault),
+            "enqueued_at": None,
         })
     return out
 
@@ -108,19 +112,29 @@ def event_id(user: str, change: str, path: str, blob: str | None) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
+    from datetime import datetime, timezone, timedelta
+
+    ap = argparse.ArgumentParser(description="Vault Git 增量扫描（可选入队）")
     ap.add_argument("--vault")
+    ap.add_argument("--user", default=DEFAULT_USER_ID,
+                    help="队列分片 / 基线键用户 id（默认 user_01）")
+    ap.add_argument("--skill-id", default=DEFAULT_SKILL_ID,
+                    help="事件归属 skill_id（默认 vault-base）")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--no-advance", action="store_true",
                     help="只输出增量，不推进基线（调试用）")
+    ap.add_argument("--enqueue", action="store_true",
+                    help="将增量 LPUSH 入 Redis 队列；成功后才推进基线")
     args = ap.parse_args()
 
+    user_id = args.user
+    skill_id = args.skill_id
     vault = vault_root(args.vault)
     cfg = load_config(vault)
     init_vault_git(vault)
     cur = head_commit(vault)
 
-    snap_key = "snapshot:git_commit:%s:%s" % (USER_ID, SKILL_ID)
+    snap_key = "snapshot:git_commit:%s:%s" % (user_id, skill_id)
     degraded, base = False, None
 
     r = redis_conn(vault, timeout=cfg["degrade"]["probe_timeout_ms"] / 1000.0)
@@ -147,13 +161,17 @@ def main() -> int:
         if advance:
             save_baseline(vault, r, snap_key, cur)
         print(json.dumps({"degraded": degraded, "advance": advance,
-                          "base": None, "head": cur, "changes": []},
+                          "user": user_id, "skill_id": skill_id,
+                          "base": None, "head": cur, "changes": [],
+                          "enqueued": 0},
                          ensure_ascii=False, indent=2))
         return 0
 
     if base == cur:
         print(json.dumps({"degraded": degraded, "advance": False,
-                          "base": base, "head": cur, "changes": []},
+                          "user": user_id, "skill_id": skill_id,
+                          "base": base, "head": cur, "changes": [],
+                          "enqueued": 0},
                          ensure_ascii=False, indent=2))
         return 0
 
@@ -162,14 +180,54 @@ def main() -> int:
     baseline_broken = not is_ancestor(base, vault)
     if baseline_broken:
         print(json.dumps({"degraded": degraded, "baseline_broken": True,
-                          "base": base, "head": cur, "changes": []},
+                          "user": user_id, "skill_id": skill_id,
+                          "base": base, "head": cur, "changes": [],
+                          "enqueued": 0},
                          ensure_ascii=False, indent=2))
         return 3   # 退出码 3 = 需要人工跑 vault_admin.py doctor
 
-    changes = changed_files(base, vault)
-    print(json.dumps({"degraded": degraded, "baseline_broken": False, "base": base,
-                      "head": cur, "changes": changes}, ensure_ascii=False, indent=2))
-    return 0
+    changes = changed_files(base, vault, user_id=user_id, skill_id=skill_id)
+    enqueued = 0
+    advance = False
+    enqueue_error = None
+
+    if args.enqueue:
+        if r is None:
+            enqueue_error = "redis unreachable; refuse advance"
+        else:
+            try:
+                import vault_queue as vq
+                tz = timezone(timedelta(hours=8))
+                now = datetime.now(tz).replace(microsecond=0).isoformat()
+                for ev in changes:
+                    ev["enqueued_at"] = now
+                enqueued = vq.enqueue(r, user_id, changes)
+                # 入队成功后才推进基线（见模块 docstring）
+                if not args.no_advance:
+                    save_baseline(vault, r, snap_key, cur)
+                    advance = True
+            except Exception as e:
+                enqueue_error = "%s: %s" % (type(e).__name__, e)
+    elif not args.no_advance:
+        # 兼容旧行为：仅扫描也可推进（调试）；生产请用 --enqueue
+        save_baseline(vault, r, snap_key, cur)
+        advance = True
+
+    result = {
+        "degraded": degraded,
+        "baseline_broken": False,
+        "user": user_id,
+        "skill_id": skill_id,
+        "base": base,
+        "head": cur,
+        "changes": changes,
+        "enqueued": enqueued,
+        "advance": advance,
+    }
+    if enqueue_error:
+        result["enqueue_error"] = enqueue_error
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 2 if enqueue_error else 0
 
 
 def is_ancestor(base: str, vault: Path) -> bool:

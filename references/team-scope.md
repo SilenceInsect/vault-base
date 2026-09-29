@@ -3,7 +3,7 @@
 | 逻辑 ID | 磁盘路径 |
 |---------|----------|
 | `{team_type}:{team_name}` | `teams/{team_type}/{team_name}/` |
-| 例 `demo-team:demo-project` | `teams/demo-team/demo-project/` |
+| 例 `test-team:amrd-test` | `teams/test-team/amrd-test/` |
 
 必有文件：`team.yml`（`id` 必须等于逻辑 ID）。
 

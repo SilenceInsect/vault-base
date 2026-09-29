@@ -1,0 +1,23 @@
+# amrd-test 团队默认共享环境（无密码；密码只进 secrets.local.json）
+# 逻辑 ID：test-team:amrd-test
+schema_version: 1
+team:
+  team_type: test-team
+  team_name: amrd-test
+  display_name: AMRD 测试组
+install:
+  mode: shared_full
+shared_env:
+  redis:
+    host: "198.51.100.10"
+    port: 6379
+    db: 0
+    expected_version: "3.2.12"
+  mysql:
+    host: "198.51.100.10"
+    port: 3306
+    database: amrd_qa_vault
+    charset: utf8mb4
+notes: |
+  选择 amrd-test 时自动复用上述 Redis/MySQL；
+  凭据从本机 secrets.local.json 或环境变量读取，不写入本文件。

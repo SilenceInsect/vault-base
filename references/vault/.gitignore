@@ -2,5 +2,7 @@ _kb/*.db
 _kb/*.db-journal
 _kb/secrets.local.json
 _kb/baseline.json
+_kb/skill-catalog.json
+_kb/skill-catalog.md
 __pycache__/
 *.pyc

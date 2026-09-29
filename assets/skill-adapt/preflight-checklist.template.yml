@@ -1,0 +1,55 @@
+# 任务开始前 · 前置物料清单（YAML）
+# 由 vault-base 适配注入；Agent 按 missing 逐项提问（Matt/grill 式：一次一问）后 write-field。
+schema_version: 1
+doc_type: preflight_materials
+
+skill_id: ""
+task_goal: ""                 # 本会话任务目标（一句话）
+scenario: ""                  # 业务场景标签
+created_at: ""
+updated_at: ""
+
+# 上下文召回（vault-base Redis + MySQL）
+context:
+  vault_base_root: ""         # 默认 ~/common-skills-repo/vault-base
+  recall_query: ""            # 用于 vault_recall / vault_cache_ask 的关键词
+  recall_limit: 8
+  recalled_uuids: []          # 召回后回填
+  recalled_titles: []
+
+# 已知信息（可自动填充）
+known:
+  author: ""
+  workspace: ""
+  related_skill_ids: []
+  local_brief_path: ""        # briefs/{skill_id}.md
+
+# 必备物料（uncertain → 逐问）
+materials:
+  acceptance_criteria: ""     # 验收标准
+  inputs: []                  # 输入产物/路径
+  constraints: []             # 边界与禁止项
+  tools_needed: []            # 预计工具
+  output_artifacts: []        # 期望产出（含 html 报告等）
+  risk_notes: ""
+
+# 沉淀策略（执行中 hooks 读取）
+sediment:
+  enabled: true
+  default_share_scope: "private"   # private | shared
+  auto_dump_on_decision: true
+  kinds_allowed:
+    - reusable_decision
+    - scenario_decision
+    - business_flow
+    - exec_logic
+    - tool_call_logic
+    - goal_attainment
+    - quality_uplift
+    - result_html
+
+# 访谈进度
+interview:
+  status: pending             # pending | in_progress | filled
+  missing_fields: []
+  updated_at: ""

@@ -20,7 +20,7 @@ from pathlib import Path
 
 SECRETS = Path(r"<vault-client-root>\_kb\secrets.local.json")
 SEC_NAME = "mysql_shared"
-REDIS_HOST = "<SHARED_HOST>"
+REDIS_HOST = "198.51.100.10"
 REDIS_PORT = 6379
 
 
