@@ -67,11 +67,71 @@ def _empty(v) -> bool:
     return False
 
 
-def checklist_path(skill_dir: Path, skill_id: str) -> Path:
+def skill_data_dir(skill_id: str, vault_base: str | Path = "") -> Path:
+    """per-skill 数据目录：<vault-base>/<skill_id>/（顶层，单目录装全部数据）。
+
+    preflight 清单、沉淀产物、适配账本统一落这里，业务 skill 目录保持零污染，
+    卸载只需摘 SKILL.md 路由节；跨 IDE 同名 skill 共享同一份。
+    """
+    if vault_base:
+        return Path(vault_base).expanduser() / skill_id
+    try:
+        from vault_paths import skill_root  # type: ignore
+        return skill_root() / skill_id
+    except Exception:
+        return Path(__file__).resolve().parents[1] / skill_id
+
+
+def vault_checklist_path(skill_id: str, vault_base: str | Path = "") -> Path:
+    return skill_data_dir(skill_id, vault_base) / "preflight.yml"
+
+
+def _vb_root(vault_base: str | Path = "") -> Path:
+    if vault_base:
+        return Path(vault_base).expanduser()
+    try:
+        from vault_paths import skill_root  # type: ignore
+        return skill_root()
+    except Exception:
+        return Path(__file__).resolve().parents[1]
+
+
+def interim_checklist_path(skill_id: str, vault_base: str | Path = "") -> Path:
+    """过渡布局（references/vault-integration/preflight/），仅兼容读。"""
+    return (_vb_root(vault_base) / "references" / "vault-integration"
+            / "preflight" / ("%s.preflight.yml" % skill_id))
+
+
+def legacy_checklist_path(skill_dir: Path, skill_id: str) -> Path:
+    """v1 落点（注入到业务 skill 内部），仅兼容读。"""
     return (
         skill_dir / "references" / "vault-integration" / "preflight"
         / ("%s.preflight.yml" % skill_id)
     )
+
+
+def checklist_path(skill_dir: Path, skill_id: str, vault_base: str | Path = "") -> Path:
+    """解析清单路径：新根 → 过渡布局 → v1 legacy → 新根（新写落新根）。"""
+    vp = vault_checklist_path(skill_id, vault_base)
+    if vp.is_file():
+        return vp
+    ip = interim_checklist_path(skill_id, vault_base)
+    if ip.is_file():
+        return ip
+    lp = legacy_checklist_path(skill_dir, skill_id)
+    if lp.is_file():
+        return lp
+    return vp
+
+
+def checklist_location(skill_dir: Path, skill_id: str, path: Path,
+                       vault_base: str | Path = "") -> str:
+    """给输出用的落点标签：vault / interim / legacy。"""
+    if path == legacy_checklist_path(skill_dir, skill_id):
+        return "legacy"
+    if path == interim_checklist_path(skill_id, vault_base):
+        return "interim"
+    return "vault"
 
 
 def template_path() -> Path:
@@ -168,6 +228,7 @@ def cmd_init(args) -> int:
     skill_dir = Path(args.skill_dir).expanduser().resolve()
     skill_id = args.skill_id
     dest = checklist_path(skill_dir, skill_id)
+    loc = checklist_location(skill_dir, skill_id, dest)
     if dest.exists() and not args.force:
         print("exists:", dest)
         return 0
@@ -184,7 +245,7 @@ def cmd_init(args) -> int:
         _set(data, "interview.status", "in_progress" if miss else "filled")
         dump(data, dest)
     print(json.dumps({
-        "ok": True, "path": str(dest), "autofilled": filled,
+        "ok": True, "path": str(dest), "location": loc, "autofilled": filled,
         "missing": missing_fields(data) if yaml else [],
     }, ensure_ascii=False, indent=2))
     return 0
@@ -203,6 +264,7 @@ def cmd_missing(args) -> int:
     out = {
         "ok": True,
         "path": str(path),
+        "location": checklist_location(skill_dir, args.skill_id, path),
         "missing": miss,
         "questions": [
             {"field": f, "ask": QUESTIONS.get(f, "请提供 %s" % f)} for f in miss
@@ -246,6 +308,7 @@ def cmd_write_field(args) -> int:
     print(json.dumps({
         "ok": True, "field": args.field, "value": val,
         "missing_count": len(miss), "path": str(path),
+        "location": checklist_location(skill_dir, args.skill_id, path),
     }, ensure_ascii=False, indent=2))
     return 0
 

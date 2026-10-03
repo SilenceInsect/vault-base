@@ -75,18 +75,19 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
 <div class="wrap">
 <header>
   <h1>vault-base · 功能与生效分析报告</h1>
-  <p class="sub">梳理仓库职责、实现逻辑、工作流时序，并结合本机实跑结果判定各能力是否生效。探测时间：2026-09-28（本机）。</p>
+  <p class="sub">梳理仓库职责、实现逻辑、工作流时序与本机能力状态。基线探测 2026-09-28；本版修订 <b>2026-09-29</b>（共享适配修复、prefixCache / recall、JEV→Laya 本地门控与微调导出）。</p>
   <div class="meta">
-    <span class="chip"><span class="dot ok"></span><b>就绪门禁</b> ready=true</span>
-    <span class="chip"><span class="dot ok"></span><b>共享写入</b> can_write_shared=true</span>
-    <span class="chip"><span class="dot bad"></span><b>共享读写链路</b> 代码≠DDL，审核/检索断</span>
+    <span class="chip"><span class="dot ok"></span><b>就绪门禁</b> ready / can_write_shared</span>
+    <span class="chip"><span class="dot ok"></span><b>安装门禁</b> I1–I9（install_gate）</span>
+    <span class="chip"><span class="dot ok"></span><b>共享读写链路</b> store↔DDL 已对齐</span>
+    <span class="chip"><span class="dot info"></span><b>门控</b> Laya 本地 System One</span>
     <span class="chip"><span class="dot info"></span><b>仓库</b> SilenceInsect/vault-base</span>
   </div>
   <div class="verdict">
-    <div class="vcard ok"><div class="k">环境底座</div><div class="n">生效</div><div class="d">Redis/MySQL/Vault/IDE 联接可用</div></div>
-    <div class="vcard ok"><div class="k">本地沉淀</div><div class="n">生效</div><div class="d">vault_dump / catalog / brief 可用</div></div>
-    <div class="vcard bad"><div class="k">共享闭环</div><div class="n">未闭环</div><div class="d">consume/review/search 与 DDL 错位</div></div>
-    <div class="vcard warn"><div class="k">协议缺口</div><div class="n">P0 未齐</div><div class="d">recall API / 旧库导入仍待实现</div></div>
+    <div class="vcard ok"><div class="k">环境底座</div><div class="n">生效</div><div class="d">Redis / MySQL / Vault / IDE 联接</div></div>
+    <div class="vcard ok"><div class="k">本地沉淀</div><div class="n">生效</div><div class="d">dump / catalog / brief / redact</div></div>
+    <div class="vcard ok"><div class="k">共享闭环</div><div class="n">可通</div><div class="d">scan→consume→pending→approve→main</div></div>
+    <div class="vcard warn"><div class="k">语料与微调</div><div class="n">偏少</div><div class="d">决策样本不足；Laya 训练集仅冒烟量级</div></div>
   </div>
 </header>
 
@@ -98,8 +99,9 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
   <a href="#s3">3. 实现逻辑</a>
   <a href="#s4">4. 工作流时序</a>
   <a href="#s5">5. 生效矩阵</a>
-  <a href="#s6">6. 阻断根因</a>
-  <a href="#s7">7. 建议优先级</a>
+  <a href="#s6">6. Laya 本地与微调</a>
+  <a href="#s7">7. 历史阻断与现状</a>
+  <a href="#s8">8. 建议优先级</a>
 </nav>
 
 <main>
@@ -110,11 +112,12 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
   <table>
     <tr><th>层</th><th>存储</th><th>职责</th></tr>
     <tr><td>本地 Vault</td><td><code>references/vault/**/*.md</code>（Obsidian）</td><td>单机笔记、brief、候选共享前落盘</td></tr>
-    <tr><td>共享金库</td><td>MySQL <code>amrd_qa_vault</code> + Redis 缓存/事件</td><td>跨 Skill 可复用结论；审核后进 main</td></tr>
-    <tr><td>真相源布局</td><td><code>~/common-skills-repo/vault-base</code></td><td>Cursor/Claude/Codex 通过 junction 联接，避免多份拷贝</td></tr>
+    <tr><td>共享金库</td><td>MySQL <code>amrd_qa_vault</code> + Redis</td><td>跨 Skill 可复用结论；审核后进 main；<code>vault:c:</code> prefixCache</td></tr>
+    <tr><td>决策门控</td><td>本机 <code>laya-serve</code>（可选）</td><td>共享候选结构化判定；不替代人审</td></tr>
+    <tr><td>真相源布局</td><td><code>~/common-skills-repo/vault-base</code></td><td>Cursor / Claude / Codex / Workbuddy 等 junction 联接</td></tr>
   </table>
   <div class="callout ok">
-    <b>边界：</b>本仓只管 <code>vault:</code> / <code>amrd_qa_vault</code>；领域库（如 bug-vault / <code>amrd_qa_kb</code>）仍由领域 Skill 维护。协议要求「叠读、不替换源」，P0/P1 禁止把业务默认读源切到公共库。
+    <b>边界：</b>本仓只管 <code>vault:</code> / <code>amrd_qa_vault</code>；领域库（如 bug-vault / <code>amrd_qa_kb</code>）仍由领域 Skill 维护。协议要求「叠读、不替换源」。
   </div>
 </section>
 
@@ -125,38 +128,48 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
     <tr><th>能力域</th><th>脚本 / 资产</th><th>作用</th></tr>
     <tr>
       <td>安装与联接</td>
-      <td><code>common_skills_repo.py</code><br><code>install_inventory.py</code><br><code>team_workspace.py</code></td>
-      <td>建 common 仓、IDE junction、物料清单、组私有目录</td>
+      <td><code>common_skills_repo.py</code><br><code>install_inventory.py</code><br><code>team_workspace.py</code><br><code>install_gate.py</code> / <code>install_flow.py</code></td>
+      <td>common 仓、IDE junction、物料清单、组目录；I1–I9 安装门禁</td>
     </tr>
     <tr>
       <td>环境与门禁</td>
       <td><code>env_ensure.py</code> / <code>env_probe.py</code><br><code>readiness_gate.py</code><br><code>hooks/session_probe.py</code></td>
-      <td>建 Vault 骨架、探 Redis/MySQL、R1–R8 门禁、<code>can_write_shared</code></td>
+      <td>Vault 骨架、探 Redis/MySQL、R1–R8、<code>can_write_shared</code></td>
     </tr>
     <tr>
       <td>技能索引</td>
       <td><code>skill_catalog.py</code></td>
-      <td>扫描本机 Skill → 索引；lookup 合并历史元数据与当前源，产出检索计划</td>
+      <td>扫描本机 Skill → 索引；lookup 合并历史与当前源，产出检索计划</td>
     </tr>
     <tr>
       <td>本地沉淀</td>
       <td><code>vault_dump.py</code> + <code>vault_redact.py</code><br><code>brief_bootstrap.py</code> / <code>brief_interview.py</code></td>
-      <td>问答落标准化 MD；敏感信息强制私有；brief 活文档</td>
+      <td>标准化 MD；敏感强制私有；brief 活文档</td>
     </tr>
     <tr>
       <td>增量事件</td>
       <td><code>vault_scan.py</code> → <code>vault_queue.py</code> → <code>vault_consume.py</code></td>
-      <td>Git diff 增量 → Redis LIST 入队 → 幂等消费 → pending</td>
+      <td>Git diff → Redis LIST → 幂等消费 → pending（规则 + 可选 Laya）</td>
     </tr>
     <tr>
       <td>审核与主库</td>
       <td><code>vault_review.py</code> + <code>vault_store.py</code></td>
-      <td>list/approve/reject；抽象 Sqlite/Mysql 双后端</td>
+      <td>list / approve / reject；Sqlite / Mysql 双后端，对齐 DDL</td>
+    </tr>
+    <tr>
+      <td>召回与缓存</td>
+      <td><code>vault_recall.py</code><br><code>vault_prefix_cache.py</code><br><code>vault_cache_ask.py</code></td>
+      <td>Redis <code>vault:c:</code> → MySQL → 本地 MD；CLI 问答查缓存</td>
+    </tr>
+    <tr>
+      <td>共享门控</td>
+      <td><code>laya_client.py</code><br><code>laya_export_dataset.py</code><br><code>jev_client.py</code>（shim）</td>
+      <td>本地 System One <code>/v1/systemone</code>；从 Vault 导出微调 JSONL</td>
     </tr>
     <tr>
       <td>运维</td>
       <td><code>vault_admin.py</code><br><code>assets/ddl_mysql57.sql</code></td>
-      <td>doctor/stats；共享库 DDL（4 表）</td>
+      <td>doctor / stats；共享库 DDL</td>
     </tr>
   </table>
 </section>
@@ -164,209 +177,275 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
 <section id="s3">
   <h2>3. 功能实现逻辑</h2>
 
-  <h3>3.1 就绪门禁（R1–R8）</h3>
-  <p class="lead"><code>readiness_gate.py</code> 产出契约：<code>ready</code> / <code>gate</code> / <code>capability</code>。<code>can_write_shared=false</code> 时禁止一切共享侧写入。</p>
+  <h3>3.1 就绪门禁（R1–R8）与安装门禁（I1–I9）</h3>
+  <p class="lead"><code>readiness_gate</code> 管连通与本地骨架；共享开启后必须再跑 <code>install_gate --require-shared</code>（I1–I9），否则不能宣称共享可写。</p>
   <table>
-    <tr><th>项</th><th>含义</th><th>缺失等级</th></tr>
-    <tr><td>R1</td><td>本地 Vault 有 md</td><td>DEGRADED</td></tr>
-    <tr><td>R2</td><td>Redis PING + MySQL SELECT 1</td><td>DEGRADED</td></tr>
-    <tr><td>R3</td><td>Vault 有 Git HEAD</td><td>BLOCKER</td></tr>
-    <tr><td>R4</td><td>DB 身份回读正确（防静默 SQLite 却写 Redis）</td><td>BLOCKER</td></tr>
-    <tr><td>R5–R8</td><td>业务 Skill accepts_brief / brief / samples / 迭代字段</td><td>按项 DEGRADED/INFO</td></tr>
+    <tr><th>项</th><th>含义</th></tr>
+    <tr><td>R1–R8</td><td>Vault / Redis·MySQL / Git / DB 方言 / 业务 brief 等</td></tr>
+    <tr><td>I1–I2</td><td>IDE LINK；物料清单 YAML（Windows 路径规范化）</td></tr>
+    <tr><td>I3–I6</td><td>DDL↔MysqlVaultStore；consume 可导入；pending / search</td></tr>
+    <tr><td>I7–I9</td><td>Redis LIST；空队列 BRPOP；prefixCache <code>vault:c:</code></td></tr>
   </table>
 
-  <h3>3.2 检索（协议强制顺序）</h3>
+  <h3>3.2 检索顺序</h3>
   <div class="flow">
     <span class="node ok">0 skill_catalog</span><i>→</i>
-    <span class="node hot">A 共享 Redis→MySQL</span><i>→</i>
+    <span class="node ok">A Redis vault:c:</span><i>→</i>
+    <span class="node ok">A′ MySQL main</span><i>→</i>
     <span class="node ok">B 本地 Vault MD</span><i>→</i>
     <span class="node">C 领域金库</span><i>→</i>
     <span class="node">D 资料原文</span><i>→</i>
     <span class="node">E 问用户</span>
   </div>
-  <p class="lead">索引只做路由与元数据合并，不替代正文召回。协议已声明：统一 <code>recall</code> CLI/API <b>尚未实现</b>；目前 lookup 只产出 <code>lookup_plan</code>。</p>
+  <p class="lead">统一门面：<code>vault_recall.py</code> / <code>vault_cache_ask.py</code>。prefixCache 与事件队列键分离（见 <code>references/prefix-cache.md</code>）。</p>
 
   <h3>3.3 沉淀（写路径）</h3>
   <ol class="seq">
-    <li><strong>vault_dump</strong> 生成带 frontmatter 的 MD（answer/decision/reference）
-      <span class="t">落 <code>answers|decisions|references/{uuid}.md</code>；content_hash 幂等；redact 命中 → <code>is_candidate_shared=false</code></span>
+    <li><strong>vault_dump</strong>
+      <span class="t">落 <code>answers|decisions|references/{uuid}.md</code>；content_hash 幂等；redact → <code>is_candidate_shared=false</code></span>
     </li>
-    <li><strong>候选共享</strong> 仅当 frontmatter 标记且门禁允许
-      <span class="t">禁止业务直写 <code>shared_vault_main</code>；必须走事件 → pending → 审核</span>
+    <li><strong>候选共享</strong>
+      <span class="t">禁止业务直写 main；事件 → 规则/Laya 判定 → pending → 人审</span>
     </li>
-    <li><strong>审核通过</strong> approve → main（status=active）
-      <span class="t">拒绝 / supersede 保留审计；检索默认只返回 active</span>
+    <li><strong>审核通过</strong>
+      <span class="t">approve → <code>shared_vault_main</code>（active）并写穿 prefixCache</span>
     </li>
   </ol>
 
   <h3>3.4 事件队列（Redis 3.2 LIST）</h3>
-  <p class="lead">因 Redis 3.2.12 <b>无 Stream</b>，采用 LIST + BRPOPLPUSH；按 <code>user_id</code> 分片。</p>
+  <p class="lead">无 Stream，采用 LIST + BRPOPLPUSH；按 <code>user_id</code> 分片。</p>
   <pre>生产 LPUSH  vault:events:{user}
 取出 BRPOPLPUSH → vault:processing:{user}
 确认 LREM processing
 失败 LPUSH vault:dlq:{user}
 暂存 LPUSH vault:llm_pending:{user}   # timer 模式规则判不了</pre>
-  <p class="lead"><b>基线推进时机：入队成功后</b>（避免消费失败导致重复扫描却永不前进）。消费侧按 <code>event_id</code> 幂等。</p>
+  <p class="lead"><b>基线推进：入队成功后</b>。消费按 <code>event_id</code> 幂等；空队列超时视为无事件（不抛死）。</p>
 
-  <h3>3.5 存储抽象错位（关键）</h3>
-  <div class="callout bad">
-    <b>DDL（真相）</b> 使用表 <code>shared_vault_pending_review</code> / <code>shared_vault_main</code> / <code>vault_event</code>，字段含 <code>segments</code>、<code>tags</code>、<code>skill_id</code> 等。<br>
-    <b>MysqlVaultStore（代码）</b> 仍按 Sqlite 简化模型读写 <code>meta_json</code>、<code>vault_events</code> 等不存在的列/表 → 审核、搜索、事件落库在 MySQL 路径下必然失败。
+  <h3>3.5 消费判定（规则 → Laya）</h3>
+  <div class="flow">
+    <span class="node">非候选 / redact</span><i>→</i>
+    <span class="node ok">private</span>
+  </div>
+  <div class="flow">
+    <span class="node hot">候选共享</span><i>→</i>
+    <span class="node">规则</span><i>→</i>
+    <span class="node ok">Laya share_gate</span><i>→</i>
+    <span class="node">private | share | uncertain</span><i>→</i>
+    <span class="node ok">pending（永不自动 approve）</span>
+  </div>
+  <p class="lead">默认 <code>laya.enabled=false</code>。开启后打本机 <code>POST {base_url}/v1/systemone</code>。旧配置键 <code>jev.*</code> / <code>jev_client.py</code> 仍兼容回落。</p>
+
+  <h3>3.6 存储（已对齐）</h3>
+  <div class="callout ok">
+    <b>DDL 真相：</b><code>shared_vault_pending_review</code> / <code>shared_vault_main</code> / <code>vault_event</code> 等，字段含 <code>segments</code>、<code>tags</code>、<code>llm_verdict</code>…<br>
+    <b>MysqlVaultStore：</b>已按 DDL 读写（历史 <code>meta_json</code> / <code>vault_events</code> 错位已修复，由 I3/I5/I6 门禁兜住）。
   </div>
 </section>
 
 <section id="s4">
   <h2>4. 工作流时序</h2>
 
-  <h3>4.1 安装时序（一次性）</h3>
+  <h3>4.1 安装时序</h3>
   <div class="flow">
     <span class="node">clone → common 仓</span><i>→</i>
     <span class="node ok">link IDE</span><i>→</i>
-    <span class="node warn">install_inventory</span><i>→</i>
+    <span class="node ok">install_inventory</span><i>→</i>
     <span class="node ok">secrets.local.json</span><i>→</i>
     <span class="node ok">env_ensure</span><i>→</i>
     <span class="node ok">readiness_gate</span><i>→</i>
-    <span class="node ok">DDL（已建空表）</span>
+    <span class="node ok">DDL</span><i>→</i>
+    <span class="node hot">install_gate --require-shared</span>
   </div>
+  <p class="lead">步骤细节见 <a href="install.html">docs/install.html</a>。</p>
 
-  <h3>4.2 会话内业务时序（每次任务）</h3>
+  <h3>4.2 会话内业务时序</h3>
   <ol class="seq">
-    <li><strong>第 0 步门禁</strong><span class="t">env_ensure → readiness_gate；有 BLOCKER 则中止；注入 briefs/{skill_id}.md</span></li>
-    <li><strong>技能索引</strong><span class="t">skill_catalog scan/lookup → 合并元数据 → lookup_plan</span></li>
-    <li><strong>叠读召回</strong><span class="t">共享 → 本地 Vault → 领域库 → 原文 → 提问（召回门面待实现）</span></li>
-    <li><strong>执行业务</strong><span class="t">业务 Skill 自身逻辑（如一致性审查）</span></li>
-    <li><strong>结案沉淀</strong><span class="t">vault_dump（可复用结论）+ 领域原写入（领域资产）</span></li>
-    <li><strong>增量入队（联网）</strong><span class="t">git commit Vault → scan → queue enqueue → consume → pending</span></li>
-    <li><strong>人工审核</strong><span class="t">vault_review approve/reject → shared_vault_main</span></li>
+    <li><strong>第 0 步门禁</strong><span class="t">env_ensure → readiness_gate；注入 briefs/{skill_id}.md</span></li>
+    <li><strong>技能索引</strong><span class="t">skill_catalog scan/lookup → lookup_plan</span></li>
+    <li><strong>叠读召回</strong><span class="t">vault_recall / cache_ask：共享缓存 → MySQL → 本地 → 领域</span></li>
+    <li><strong>执行业务</strong><span class="t">业务 Skill 自身逻辑</span></li>
+    <li><strong>结案沉淀</strong><span class="t">vault_dump + 领域原写入</span></li>
+    <li><strong>增量入队</strong><span class="t">git commit → scan --enqueue → consume（规则/Laya）→ pending</span></li>
+    <li><strong>人工审核</strong><span class="t">vault_review approve/reject → main + prefixCache</span></li>
   </ol>
 
   <h3>4.3 事件消费双模式</h3>
   <table>
     <tr><th>模式</th><th>场景</th><th>能力</th></tr>
-    <tr><td><code>session</code></td><td>P1/P3/P4 会话内</td><td>可用模型做语义判定；uncertain 可入 pending</td></tr>
-    <tr><td><code>timer</code></td><td>P2 定时任务</td><td>仅规则；判不了 → <code>llm_pending</code>，不丢弃</td></tr>
+    <tr><td><code>session</code></td><td>P1/P3/P4 会话内</td><td>可开 Laya；uncertain 仍入 pending</td></tr>
+    <tr><td><code>timer</code></td><td>P2 定时任务</td><td>规则 +（可选）Laya；判不了 → <code>llm_pending</code></td></tr>
   </table>
 
-  <h3>4.4 时序图（共享候选闭环）</h3>
+  <h3>4.4 共享候选闭环</h3>
   <pre>业务结案
   │  vault_dump(--shared?) ──► 本地 MD (is_candidate_shared)
   │  git commit (Vault 仓)
   ▼
-vault_scan  (git diff baseline..HEAD → events[])
-  │  成功入队后推进 baseline
+vault_scan  (git diff → events[]) ── 入队后推进 baseline
   ▼
 vault_queue.enqueue  (LPUSH vault:events:{user})
   ▼
-vault_consume  (BRPOPLPUSH → 幂等 → judge → upsert_pending)
+vault_consume  (BRPOPLPUSH → 幂等 → 规则[+Laya] → upsert_pending)
   ▼
 vault_review list/approve
   ▼
-shared_vault_main (status=active) ◄── 检索默认只读此层</pre>
+shared_vault_main (active) + vault:c: prefixCache
+  ▼
+vault_recall / vault_cache_ask</pre>
 </section>
 
 <section id="s5">
-  <h2>5. 功能是否生效（本机实跑）</h2>
-  <p class="lead">下列结果来自 2026-09-28 对本机 <code>C:\Users\<user>\common-skills-repo\vault-base</code> 的命令探测，非文档推演。</p>
+  <h2>5. 功能是否生效（本机）</h2>
+  <p class="lead">综合 2026-09-28 实跑与 2026-09-29 代码落地状态。共享表仍偏空（smoke 样本），但链路本身可走通。</p>
 
   <h3>5.1 环境与底座</h3>
   <table>
-    <tr><th>检查项</th><th>结果</th><th>证据摘要</th></tr>
-    <tr><td>readiness_gate</td><td><span class="badge ok">生效</span></td><td>ready=true；R1–R4/R7 OK；capability 全 true</td></tr>
-    <tr><td>env_probe</td><td><span class="badge ok">生效</span></td><td>Redis 198.51.100.10 PONG；MySQL 5.7.27 SELECT 1；无 Stream（符合 LIST 设计）</td></tr>
-    <tr><td>IDE 联接</td><td><span class="badge ok">生效</span></td><td>cursor/claude/codex 均为 LINK → common-skills-repo/vault-base</td></tr>
-    <tr><td>MySQL 表结构</td><td><span class="badge ok">已建库</span></td><td>4 表存在且行数均为 0（空库就绪）</td></tr>
-    <tr><td>本地 Vault 内容</td><td><span class="badge warn">偏空</span></td><td>briefs=3；answers=1（探测时 smoke dump）；decisions/references=0</td></tr>
+    <tr><th>检查项</th><th>结果</th><th>说明</th></tr>
+    <tr><td>readiness_gate</td><td><span class="badge ok">生效</span></td><td>ready / can_write_shared 可达</td></tr>
+    <tr><td>install_gate I1–I9</td><td><span class="badge ok">已落地</span></td><td>共享阶段必跑；含 prefixCache</td></tr>
+    <tr><td>env_probe</td><td><span class="badge ok">生效</span></td><td>Redis PONG；MySQL 5.7；无 Stream → LIST</td></tr>
+    <tr><td>IDE 联接</td><td><span class="badge ok">生效</span></td><td>junction → common-skills-repo</td></tr>
+    <tr><td>本地 Vault 内容</td><td><span class="badge warn">偏空</span></td><td>briefs 有样例；answers 仅 smoke；decisions≈0</td></tr>
+    <tr><td>共享主库语料</td><td><span class="badge warn">偏空</span></td><td>约 1 条 active smoke；不足以支撑检索体验</td></tr>
   </table>
 
   <h3>5.2 核心能力矩阵</h3>
   <table>
     <tr><th>能力</th><th>状态</th><th>说明</th></tr>
-    <tr><td>skill_catalog scan/lookup</td><td><span class="badge ok">生效</span></td><td>扫描 16 个 Skill；lookup(req-code-consistency) 产出 historical + lookup_plan</td></tr>
-    <tr><td>vault_dump</td><td><span class="badge ok">生效</span></td><td>成功写入 answers/{uuid}.md</td></tr>
-    <tr><td>vault_scan</td><td><span class="badge warn">部分生效</span></td><td>可跑；首次 advance 基线、changes=[]；USER_ID/SKILL_ID 硬编码；仅看已 commit 的 diff</td></tr>
-    <tr><td>vault_queue</td><td><span class="badge info">库模块</span></td><td>无独立 CLI；供 consume 调用</td></tr>
-    <tr><td>vault_consume</td><td><span class="badge bad">未生效</span></td><td>导入失败：从 vault_paths 取 load_secrets/redis_conn（实际在 vault_secrets）</td></tr>
-    <tr><td>vault_review list</td><td><span class="badge bad">未生效</span></td><td><code>Unknown column 'meta_json'</code></td></tr>
-    <tr><td>store.search (MySQL)</td><td><span class="badge bad">未生效</span></td><td>同上；FULLTEXT 回落 LIKE 后仍查 meta_json</td></tr>
-    <tr><td>vault_admin doctor/stats</td><td><span class="badge ok">生效</span></td><td>门禁与 md 计数正常；dialect=mysql</td></tr>
-    <tr><td>install_inventory missing</td><td><span class="badge bad">未生效</span></td><td>Windows 路径写入 YAML 双引号未转义（<code>\U</code> 被当成 Unicode 转义）</td></tr>
-    <tr><td>统一 recall API</td><td><span class="badge miss">未实现</span></td><td>collaboration-protocol §8 明确待办</td></tr>
-    <tr><td>Laya 共享门控</td><td><span class="badge ok">已落地</span></td><td><code>laya_client.py</code> → <code>/v1/systemone</code>；可本地 serve + 微调导出；不替代人审</td></tr>
+    <tr><td>skill_catalog</td><td><span class="badge ok">生效</span></td><td>scan / lookup → lookup_plan</td></tr>
+    <tr><td>vault_dump / redact</td><td><span class="badge ok">生效</span></td><td>标准 MD + 敏感私有</td></tr>
+    <tr><td>vault_scan / queue</td><td><span class="badge ok">生效</span></td><td>需已 commit；入队后推进 baseline</td></tr>
+    <tr><td>vault_consume</td><td><span class="badge ok">生效</span></td><td>secrets 导入已修；规则 + 可选 Laya</td></tr>
+    <tr><td>vault_review / MysqlVaultStore</td><td><span class="badge ok">生效</span></td><td>对齐 DDL；approve 写穿缓存</td></tr>
+    <tr><td>store.search / recall</td><td><span class="badge ok">生效</span></td><td><code>vault_recall</code> + prefixCache + MySQL</td></tr>
+    <tr><td>install_inventory</td><td><span class="badge ok">已修复</span></td><td>Windows 路径 YAML 规范化</td></tr>
+    <tr><td>Laya 门控客户端</td><td><span class="badge ok">已落地</span></td><td>默认关闭；mock 可冒烟；需本机 <code>laya-serve</code></td></tr>
+    <tr><td>Laya 微调导出</td><td><span class="badge ok">已落地</span></td><td><code>laya_export_dataset.py</code>；当前导出约 5 条（冒烟量级）</td></tr>
     <tr><td>legacy_vaults 导入</td><td><span class="badge miss">未实现</span></td><td>协议已定、代码未齐</td></tr>
   </table>
 
-  <h3>5.3 闭环可读结论</h3>
-  <div class="callout warn">
-    <b>本地半闭环可用：</b>安装联接 → 门禁 → 索引 → dump → 读本地 brief/笔记。<br>
-    <b>共享全闭环不可用：</b>即使 Redis/MySQL 连通且 <code>can_write_shared=true</code>，消费端无法启动，审核/检索 SQL 与 DDL 不匹配，共享表仍为空。知识无法从「本机 MD」走到「团队可检索 active」。
+  <h3>5.3 闭环结论</h3>
+  <div class="callout ok">
+    <b>本地闭环：</b>安装联接 → 门禁 → 索引 → dump → brief / 本地召回。<br>
+    <b>共享闭环：</b>代码路径可通（consume / review / search / cache）；瓶颈转为<strong>语料积累</strong>与（可选）Laya 本机服务与微调数据。
   </div>
 </section>
 
 <section id="s6">
-  <h2>6. 阻断根因（按严重度）</h2>
+  <h2>6. Laya 本地部署与微调</h2>
+  <p class="lead">托管 JEV（<code>openclaw-api.com</code> /v1/decisions）已改为开源 <b>Laya</b> 本地方案。契约：<code>references/laya.md</code>。</p>
+
+  <h3>6.1 部署</h3>
+  <pre>pip install "laya[serve]"
+set LAYA_HOST=127.0.0.1
+set LAYA_PORT=8000
+set LAYA_DEVICE=cpu
+set LAYA_PRELOAD=1
+set LAYA_MODELS=typed-decisions
+laya-serve
+
+# vault.config.json
+"laya": {
+  "enabled": true,
+  "base_url": "http://127.0.0.1:8000",
+  "api_path": "/v1/systemone",
+  "model": "typed-decisions"
+}
+
+python scripts/laya_client.py probe
+python scripts/laya_client.py share-gate --candidate-shared --title "..." --question "..." --answer "..."</pre>
+
+  <h3>6.2 从 Vault 已有决策做训练集</h3>
+  <pre>python scripts/laya_export_dataset.py
+# 输出：references/vault/_kb/laya_finetune/share_gate.jsonl</pre>
   <table>
-    <tr><th>级别</th><th>问题</th><th>影响</th></tr>
+    <tr><th>数据源</th><th>标签</th></tr>
+    <tr><td><code>shared_vault_main</code> active</td><td>share</td></tr>
+    <tr><td>pending approved / rejected</td><td>share / private</td></tr>
+    <tr><td>本地 MD <code>is_candidate_shared=false</code></td><td>private</td></tr>
+    <tr><td>本地 candidate 未审</td><td>needs_human（可用 <code>--local-as-share</code>）</td></tr>
+    <tr><td>种子 <code>references/laya/dataset.sample.jsonl</code></td><td>三类样例</td></tr>
+  </table>
+  <div class="callout warn">
+    <b>2026-09-29 导出实况：</b>合计约 5 条（3 种子 + 1 本地 private smoke + 1 MySQL share smoke）。仅够链路冒烟；正式 RLCD 微调建议 ≥200 条人审标签，再接上游 notebook（见 Laya Fine-tune 指南）。
+  </div>
+
+  <h3>6.3 与 CC Switch / OpenAI Chat 的关系</h3>
+  <p class="lead">CC Switch 的 OpenAI 兼容网关<strong>不能</strong>直接填进 <code>laya.base_url</code>（缺 <code>/v1/systemone</code>）。要用 Chat 网关需另做 <code>backend=chat</code> 适配；当前推荐路径是本机 <code>laya-serve</code>。</p>
+</section>
+
+<section id="s7">
+  <h2>7. 历史阻断与现状</h2>
+  <table>
+    <tr><th>级别</th><th>问题</th><th>现状</th></tr>
     <tr>
-      <td><span class="badge bad">P0</span></td>
-      <td><code>MysqlVaultStore</code> SQL 与 <code>ddl_mysql57.sql</code> 字段/表名不一致（meta_json、vault_events vs segments/vault_event）</td>
-      <td>pending upsert、list、approve、search 全挂</td>
+      <td><span class="badge ok">已修</span></td>
+      <td>MysqlVaultStore ≠ DDL（meta_json / vault_events）</td>
+      <td>对齐 segments / vault_event；I3/I5/I6</td>
     </tr>
     <tr>
-      <td><span class="badge bad">P0</span></td>
-      <td><code>vault_consume.py</code> 错误导入 <code>load_secrets</code>/<code>redis_conn</code></td>
-      <td>事件消费 Agent 无法启动</td>
+      <td><span class="badge ok">已修</span></td>
+      <td>vault_consume 错误导入 secrets</td>
+      <td>从 vault_secrets 导入；I4</td>
+    </tr>
+    <tr>
+      <td><span class="badge ok">已修</span></td>
+      <td>Windows 清单路径 YAML 转义</td>
+      <td>正斜杠 / 单引号；I2</td>
+    </tr>
+    <tr>
+      <td><span class="badge ok">已修</span></td>
+      <td>空队列 BRPOP TimeoutError</td>
+      <td>超时当空队列；I8</td>
+    </tr>
+    <tr>
+      <td><span class="badge ok">已落地</span></td>
+      <td>统一 recall / prefixCache</td>
+      <td>vault_recall + vault:c:；I9</td>
+    </tr>
+    <tr>
+      <td><span class="badge ok">已落地</span></td>
+      <td>共享语义门控依赖托管 JEV</td>
+      <td>改为 Laya 本地；jev 为兼容 shim</td>
     </tr>
     <tr>
       <td><span class="badge warn">P1</span></td>
-      <td>缺少统一 <code>recall</code> 门面；业务只能靠 Agent 读协议手工叠读</td>
-      <td>共享召回不可自动化、不可测</td>
+      <td>共享 / 本地决策语料过少</td>
+      <td>检索与 Laya 微调数据不足</td>
     </tr>
     <tr>
-      <td><span class="badge warn">P1</span></td>
-      <td><code>install_inventory</code> Windows 路径 YAML 转义</td>
-      <td>其他团队安装引导在本机路径场景失败</td>
-    </tr>
-    <tr>
-      <td><span class="badge info">P2</span></td>
-      <td>scan 硬编码 user/skill；文档写 <code>--user</code> 但 CLI 无此参数</td>
-      <td>多用户/多 Skill 事件归属错误风险</td>
-    </tr>
-    <tr>
-      <td><span class="badge info">P2</span></td>
-      <td>共享表空 + 本地几乎无 answer/decision 语料</td>
-      <td>即使修好代码，短期内检索也无内容可命中</td>
+      <td><span class="badge miss">P2</span></td>
+      <td>legacy_vaults 导入</td>
+      <td>协议有、代码未齐</td>
     </tr>
   </table>
 </section>
 
-<section id="s7">
-  <h2>7. 建议优先级</h2>
+<section id="s8">
+  <h2>8. 建议优先级</h2>
   <ol class="seq">
-    <li><strong>对齐 MysqlVaultStore ↔ DDL</strong>
-      <span class="t">按 assets/ddl_mysql57.sql 重写 insert/select/approve/search；事件表用 vault_event；审计字段对齐 snapshot/reason</span>
+    <li><strong>持续沉淀真实决策 / 答案</strong>
+      <span class="t">vault_dump → commit → scan → consume → 人审；扩充 main 与微调 JSONL</span>
     </li>
-    <li><strong>修复 vault_consume 导入</strong>
-      <span class="t">从 vault_secrets 导入；补一条 session --once 冒烟（dump→commit→scan→enqueue→consume→review list）</span>
+    <li><strong>本机启用 Laya（可选）</strong>
+      <span class="t">laya-serve + laya.enabled=true；用导出集跑上游 RLCD notebook 后换 checkpoint</span>
     </li>
-    <li><strong>补 recall CLI</strong>
-      <span class="t">统一 A+B，返回带 source 标签的命中；lookup_plan 仅作路由输入</span>
+    <li><strong>legacy_vaults 纳入</strong>
+      <span class="t">按物料清单 review_then_import，扩大可检索语料</span>
     </li>
-    <li><strong>修 install_inventory 路径序列化</strong>
-      <span class="t">Windows 路径用正斜杠或 YAML 单引号/字面块</span>
-    </li>
-    <li><strong>打通一条真实共享样本</strong>
-      <span class="t">选一条非敏感 decision，走完 pending→approve，验证 FULLTEXT 检索</span>
+    <li><strong>业务 Skill 薄封装</strong>
+      <span class="t">领域 query 与 vault_recall 并行 merge（协作协议待办）</span>
     </li>
   </ol>
 
   <div class="callout ok">
-    <b>一句话结论：</b>vault-base 作为「本地知识底座 + 环境门禁 + 技能索引」已经可用；作为「团队共享金库闭环」因 MySQL 适配层与消费入口缺陷尚未生效。门禁绿灯不能等同于共享链路可用。
+    <b>一句话结论：</b>vault-base 作为本地底座 + 共享闭环基础设施已可用；当前短板是<strong>知识语料与 Laya 训练样本</strong>，不是消费/审核链路本身。安装请以 <code>install_gate</code> 为准，勿只看 readiness 绿灯。
   </div>
 </section>
 
 <footer>
-  报告生成：Agent 静态阅读 + 本机实跑（readiness_gate / env_probe / common_skills_repo status / vault_admin / skill_catalog / vault_dump / vault_scan / vault_review / vault_consume / MySQL DESCRIBE）。<br>
-  输出路径：<code>docs/repo-function-analysis.html</code> · 安装手册见 <code>docs/install.html</code>
+  报告：Agent 静态阅读 + 本机实跑历次探测；2026-09-29 修订纳入 Laya / prefixCache / recall / 共享适配修复。<br>
+  输出：<code>docs/repo-function-analysis.html</code> · 安装手册：<code>docs/install.html</code> · 门控契约：<code>references/laya.md</code>
 </footer>
 
 </main>

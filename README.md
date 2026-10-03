@@ -41,7 +41,8 @@ python vault-base/scripts/install_gate.py --id "<team-type>:<team-name>" --requi
 | scan 未 `--enqueue` 或 MD 未 git commit | commit 后 `vault_scan.py --user … --enqueue` | 阶段 6 |
 | `vault_consume` 空队列 `TimeoutError` | socket timeout ≥ BRPOP 等待；`consume_one` 吞超时 | I8 |
 
-完整步骤与验收：[`docs/install.html`](docs/install.html)。
+完整步骤与验收：[`docs/install.html`](docs/install.html)。  
+功能总览（含 Laya / 召回 / 历史阻断）：[`docs/repo-function-analysis.html`](docs/repo-function-analysis.html)。
 
 ### Redis 职责
 

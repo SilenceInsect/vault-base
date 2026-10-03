@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 """任务前钩子：按 preflight YAML 的 recall_query 做 vault Redis 召回，写回清单。
 
+清单落点：vault 侧 `<vault-base>/<skill_id>/preflight.yml`（新根，per-skill 单目录）
+（兼容读：过渡布局 references/vault-integration/preflight/ → v1 业务 skill 内 legacy）。
+
 用法：
-  python hooks/pre_task_recall.py --skill-dir <业务skill根> --skill-id <id>
+  python <vault-base>/assets/skill-adapt/hooks/pre_task_recall.py \\
+      --skill-dir <业务skill根> --skill-id <id>
 """
 from __future__ import annotations
 
@@ -22,13 +26,24 @@ def main() -> int:
     args = ap.parse_args()
 
     skill_dir = Path(args.skill_dir).expanduser().resolve()
-    checklist = (
-        skill_dir / "references" / "vault-integration" / "preflight"
-        / ("%s.preflight.yml" % args.skill_id)
+    vault_base = Path(args.vault_base).expanduser() if args.vault_base else (
+        Path.home() / "common-skills-repo" / "vault-base"
     )
-    if not checklist.is_file():
+    vault_base = vault_base.resolve()
+
+    # 清单解析：新根 <vb>/<id>/preflight.yml → 过渡布局 → v1 legacy
+    expected = vault_base / args.skill_id / "preflight.yml"
+    candidates = [
+        expected,
+        vault_base / "references" / "vault-integration" / "preflight"
+        / ("%s.preflight.yml" % args.skill_id),
+        skill_dir / "references" / "vault-integration" / "preflight"
+        / ("%s.preflight.yml" % args.skill_id),
+    ]
+    checklist = next((p for p in candidates if p.is_file()), None)
+    if checklist is None:
         print(json.dumps({
-            "ok": False, "error": "missing checklist", "path": str(checklist),
+            "ok": False, "error": "missing checklist", "path": str(expected),
         }, ensure_ascii=False))
         return 2
 

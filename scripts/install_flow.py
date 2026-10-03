@@ -639,12 +639,12 @@ def cmd_phase4_skills(args) -> int:
         entry = {
             "skill_id": sid,
             "path": r.get("path"),
+            "copies": r.get("copies") or [r.get("path")],
             "integration": r.get("integration"),
             "files": [
-                "references/vault-integration/",
-                "hooks/pre_task_recall.py",
-                "hooks/post_task_sediment.py",
-                "SKILL.md#知识金库接入",
+                "SKILL.md#知识金库接入(marker节) × %d 副本" % len(r.get("copies") or [r.get("path")]),
+                "<vault-base>/%s/preflight.yml" % sid,
+                "<vault-base>/%s/adapted.json" % sid,
             ],
             "adapted_at": _now(),
         }
@@ -708,12 +708,12 @@ def cmd_phase5_harness(args) -> int:
 
 本文件由 `install_flow.py phase5-harness` 生成，供卸载 / 版本更新对照。
 
-## 工作模式（适配后业务 skill 强制五步）
+## 工作模式（适配后业务 skill 强制五步；全部命令走 vault-base 中心目录）
 
-1. `hooks/pre_task_recall.py` — Redis/MySQL 相关性召回
-2. `preflight_materials.py` — YAML 前置物料清单
+1. `assets/skill-adapt/hooks/pre_task_recall.py` — Redis/MySQL 相关性召回
+2. `scripts/preflight_materials.py` — YAML 前置物料清单（vault 侧 preflight/）
 3. 一次一问完备物料（Matt/grill）→ `write-field`
-4. `hooks/post_task_sediment.py` — 过程沉淀
+4. `assets/skill-adapt/hooks/post_task_sediment.py` — 过程沉淀（vault 侧 sediment/）
 5. 人审 / Redis+MySQL / WebPlatform 归档与 Laya
 
 ## 验收门禁
@@ -725,7 +725,7 @@ def cmd_phase5_harness(args) -> int:
 
 见同目录 `install-manifest.json`：
 
-- `adapted_skills`：注入的 references/hooks/rules/preflight
+- `adapted_skills`：目标 skill 仅 SKILL.md marker 节；preflight/账本在 vault 侧
 - `ide_links`：junction 目标
 - `created_paths`：本机新建路径
 - `secrets_path`：**卸载时默认保留**（含密码）
@@ -880,17 +880,22 @@ def cmd_uninstall_plan(args) -> int:
         "will_remove": [],
         "will_keep": [],
     }
+    vbroot = skill_root()
+    sediment_keep = []
     for s in man.get("adapted_skills") or []:
         root = Path(s["path"])
+        sid = s.get("skill_id") or Path(s["path"]).name
         plan["will_remove"].extend([
-            str(root / "references" / "vault-integration"),
-            str(root / "hooks" / "pre_task_recall.py"),
-            str(root / "hooks" / "post_task_sediment.py"),
+            "%s  (仅摘「知识金库接入」marker 节 + frontmatter 两行)" % (root / "SKILL.md"),
+            str(vbroot / sid / "preflight.yml"),
+            str(vbroot / sid / "adapted.json"),
         ])
+        sediment_keep.append(str(vbroot / sid / "sediment"))
     plan["will_remove"].extend(man.get("harness_files") or [])
     plan["will_remove"].append(str(manifest_path(t, n)))
     plan["will_remove"].append(str(progress_path(t, n)))
     plan["will_keep"] = [
+        "vault 侧沉淀产物（知识资产，卸载不删）: %s" % "; ".join(sediment_keep),
         man.get("secrets_path") or "(secrets.local.json)",
         "IDE junction 到 common-skills-repo/vault-base（需手动 common_skills_repo unlink）",
         "MySQL/Redis 共享数据（永不随卸载删除）",
@@ -909,17 +914,14 @@ def cmd_uninstall(args) -> int:
     t, n, lid = _resolve(args)
     man = load_manifest(t, n)
     removed = []
+    # 业务 skill 卸载统一走 skill_vault_adapt uninstall（摘 marker 节 + vault 侧文件；
+    # --purge-legacy 清 v1 遗留，与模板一致才删，被改过的保留并报告）
     for s in man.get("adapted_skills") or []:
-        root = Path(s["path"])
-        integ = root / "references" / "vault-integration"
-        if integ.is_dir():
-            shutil.rmtree(integ, ignore_errors=True)
-            removed.append(str(integ))
-        for hk in ("pre_task_recall.py", "post_task_sediment.py"):
-            hp = root / "hooks" / hk
-            if hp.is_file():
-                hp.unlink()
-                removed.append(str(hp))
+        sid = s.get("skill_id") or Path(s["path"]).name
+        rc_u, out_u = _run_py("skill_vault_adapt.py", [
+            "uninstall", "--skill-id", sid, "--purge-legacy",
+        ])
+        removed.append({"skill_id": sid, "rc": rc_u, "detail": out_u[-1500:]})
     for f in man.get("harness_files") or []:
         p = Path(f)
         if p.is_file():

@@ -2,9 +2,9 @@
 name: vault-base
 description: >-
   团队知识金库底座：为任意业务 Skill 提供统一的知识检索、沉淀与共享链路。
-  安装后用 skill_vault_adapt 扫描本机 skill，注入 hooks/rules/preflight，
-  使业务 skill 走五步：Redis+MySQL 召回 → YAML 前置物料 → 逐问完备 →
-  过程沉淀 → 人审/归档/Laya。触发词：知识金库、Vault、skill 适配、前置物料、
+  安装后用 skill_vault_adapt 扫描本机 skill，单点注入 SKILL.md 路由节（hooks/rules/preflight
+  中心化管理，快速卸载），使业务 skill 走五步：Redis+MySQL 召回 → YAML 前置物料 →
+  逐问完备 → 过程沉淀 → 人审/归档/Laya。触发词：知识金库、Vault、skill 适配、前置物料、
   沉淀知识、知识审核、Laya、金库环境自检。
 ---
 
@@ -142,36 +142,54 @@ python "<skill_root>/scripts/team_workspace.py" fix-ignores
 - **Git / SVN 默认忽略**各组目录内容；仅提交 README 与 `_template`
 - 组私有信息**不要**当共享金库知识沉淀；可复用结论仍走 `vault_dump`
 
-## 业务 Skill 接入（安装后扫描适配 · 标准五步）
+## 业务 Skill 接入（中心化注入 · 快速卸载）
 
-装好 vault-base 后，**不会**自动让所有 skill 沉淀知识。须执行适配，把标准结构写入目标 skill：
+装好 vault-base 后，**不会**自动让所有 skill 沉淀知识。须执行适配——目标 skill 目录**只改 SKILL.md 一个文件**（marker 路由节 + frontmatter 两行），hooks/taxonomy/rules/preflight 全部留在本 skill 目录，不向业务 skill 拷贝任何文件：
 
 ```bash
 # 扫描本机 IDE + common-skills-repo 中的 skill
 python "<skill_root>/scripts/skill_vault_adapt.py" scan --json
 
-# 适配单个 / 全部业务 skill（写入 hooks、rules、preflight YAML、taxonomy）
+# 适配单个 / 全部业务 skill（幂等；v1 旧适配自动迁移）
 python "<skill_root>/scripts/skill_vault_adapt.py" adapt --skill-id req-code-consistency
 python "<skill_root>/scripts/skill_vault_adapt.py" adapt --all
 ```
 
-注入内容（相对业务 skill 根）：
+注入内容与落点：
 
-| 路径 | 作用 |
-|------|------|
-| `references/vault-integration/knowledge-taxonomy.yml` | 已审/待审、私有/公共、决策/业务流等分类 |
-| `references/vault-integration/rules/vault-share-protocol.md` | Agent 强制五步协议 |
-| `references/vault-integration/preflight/<id>.preflight.yml` | 任务前物料清单 |
-| `hooks/pre_task_recall.py` | Redis/MySQL 相关性召回 |
-| `hooks/post_task_sediment.py` | 过程/结案结构化沉淀 |
-| `SKILL.md` frontmatter +「知识金库接入」节 | `vault_base` / `accepts_brief` |
+| 内容 | 落点 | 说明 |
+|------|------|------|
+| SKILL.md「知识金库接入」marker 节 + frontmatter `accepts_brief`/`vault_base` | **目标 skill（唯一改动）** | `<!-- vault-base:begin/end -->` 包裹，五步协议路由 |
+| hooks（pre_task_recall / post_task_sediment） | `assets/skill-adapt/hooks/`（不复制） | 参数化 `--skill-dir/--skill-id`，按绝对路径调用 |
+| preflight 清单 | `<skill_id>/preflight.yml` | vault 侧 per-skill 单目录，adapt 生成 |
+| 适配账本 | `<skill_id>/adapted.json` | vault 侧 |
+| 沉淀产物 | `<skill_id>/sediment/` | vault 侧，**卸载时保留** |
+| taxonomy / rules | `assets/skill-adapt/`（单一副本） | 路由节内引用路径 |
+
+### 快速卸载
+
+```bash
+python "<skill_root>/scripts/skill_vault_adapt.py" uninstall --skill-id <id>
+python "<skill_root>/scripts/skill_vault_adapt.py" uninstall --skill-id <id> --purge-legacy
+python "<skill_root>/scripts/skill_vault_adapt.py" uninstall --all
+```
+
+卸载 = 摘 SKILL.md marker 节 + frontmatter 两行 + 删 vault 侧 preflight/账本；沉淀知识保留。`--purge-legacy` 额外清理 v1 遗留注入文件（与模板一致才删，被改过的仅报告）。
+
+### 跨 IDE 同名 skill（多副本）
+
+知识层**单点汇总**：preflight / sediment / 账本的 key 是 `skill_id`（与 IDE 无关），全部收在 vault 侧 per-skill 单目录 `<skill_id>/`，跨 IDE 使用同名 skill 时读写同一份。注入层按副本处理：
+
+- 同名 skill 在多个 IDE 各有**实体**副本 → `adapt` 给每个副本的 SKILL.md 注入路由节（`scan` 显示 `copies=N`）
+- IDE 目录为**联接**（junction/symlink）→ 自动 resolve 到真相源，不重复注入
+- 账本 `<skill_id>/adapted.json` 的 `copies` 数组记录各副本路径与来源
 
 ### 适配后 Agent 强制五步
 
-1. **召回上下文**：`hooks/pre_task_recall.py` → Redis `vault:c:`（+ 可选 MySQL）  
+1. **召回上下文**：`assets/skill-adapt/hooks/pre_task_recall.py` → Redis `vault:c:`（+ 可选 MySQL）  
 2. **生成前置物料清单（YAML）**：`preflight_materials.py init`  
 3. **自动填充 + 逐问完备**：`missing --json` → **一次只问一项**（Matt/grill 式 Skills）→ `write-field`  
-4. **过程沉淀**：按 hooks/rules 调用 `post_task_sediment.py`（决策/链路/工具/置信度/HTML…）  
+4. **过程沉淀**：`assets/skill-adapt/hooks/post_task_sediment.py`（决策/链路/工具/置信度/HTML…）  
 5. **持久化**：本地 YAML →（shared）enqueue → MySQL pending → 人审 → Redis；WebPlatform VaultBase 归档/清理/Laya 训练  
 
 手工声明（未跑 adapt 时最低限度）：

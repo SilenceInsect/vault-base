@@ -6,3 +6,8 @@ _kb/skill-catalog.json
 _kb/skill-catalog.md
 __pycache__/
 *.pyc
+
+# --- 本地运行数据（本地知识资产，卸载保留、不入库；公开仓勿提交内网信息）---
+answers/
+decisions/
+_kb/laya_finetune/

@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 """任务中/结案钩子：按分类沉淀结构化知识（本地 YAML + vault_dump + 可选入队）。
 
+沉淀落点：vault 侧 `<vault-base>/<skill_id>/sediment/`（per-skill 单目录），
+不写入业务 skill 目录——卸载适配只摘 SKILL.md 路由节，知识资产保留。
+
 用法：
-  python hooks/post_task_sediment.py --skill-dir <dir> --skill-id <id> \\
+  python <vault-base>/assets/skill-adapt/hooks/post_task_sediment.py \\
+    --skill-dir <dir> --skill-id <id> \\
     --kind reusable_decision --title "..." --question "..." --answer "..." \\
     [--scenario X] [--share-scope private|shared] [--confidence 0.8] \\
     [--min-chain "a>b"] [--full-chain "a>b>c"] [--tools "t1,t2"] \\
@@ -53,8 +57,9 @@ def main() -> int:
         Path.home() / "common-skills-repo" / "vault-base"
     )
     vault_base = vault_base.resolve()
-    integ = skill_dir / "references" / "vault-integration"
-    out_dir = integ / "sediment"
+    # 沉淀统一落 vault 侧 per-skill 单目录（<vault-base>/<skill_id>/sediment/）；
+    # 业务 skill 目录零污染
+    out_dir = vault_base / args.skill_id / "sediment"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     doc_uuid = str(uuid.uuid4())

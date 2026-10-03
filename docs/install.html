@@ -417,7 +417,10 @@ copy assets\secrets.local.json.example references\vault\_kb\secrets.local.json
       <p style="margin-top:10px;color:var(--fg-dim)">
         可选 Laya 本地门控（非门禁）：默认关闭。先 <code class="inl">pip install "laya[serve]" &amp;&amp; laya-serve</code>。
         冒烟：<code class="inl">python %SKILL%\scripts\laya_client.py share-gate --mock --candidate-shared --title "团队规范" --question "如何沉淀？" --answer "走 vault_dump 再审核"</code>。
-        微调导出：<code class="inl">laya_export_dataset.py --seed-only</code>。契约见 <code class="inl">references/laya.md</code>；<strong>永不</strong>因 Laya 直接 approve。
+        从已有决策导出训练集：<code class="inl">python %SKILL%\scripts\laya_export_dataset.py</code>
+        → <code class="inl">references/vault/_kb/laya_finetune/share_gate.jsonl</code>。
+        契约见 <code class="inl">references/laya.md</code>；功能总览见 <a href="repo-function-analysis.html">repo-function-analysis.html</a>；
+        <strong>永不</strong>因 Laya 直接 approve。
       </p>
       <div class="expect"><span class="lbl">预期</span><span><code>ready=true</code>，<code>blockers=[]</code>。有 BLOCKER 时<strong>禁止</strong>宣称共享可写，先按 <code>fix</code> 字段修复。</span></div>
     </div>

@@ -8,6 +8,9 @@ __pycache__/
 _extract_from_plan.py
 scripts/__pycache__/
 
+# 本机安装状态记录（含内网库名 / 主机地址 / 本机路径，不入库）
+/INSTALL-STATUS.md
+
 # portable local tool installs under this skill (do not commit binaries)
 /Obsidian/
 /Python/
@@ -20,3 +23,17 @@ teams/**
 !teams/_template/
 !teams/_template/**
 !teams/svn-ignore.txt
+
+# --- per-skill 数据目录（<skill_id>/，本地知识资产，卸载保留、不入库） ---
+# 顶层除包自身目录外一律视为 per-skill 数据；新增包目录时须同步补 !/<dir>/
+# 以及 scripts/skill_vault_adapt.py 的 RESERVED_ROOT_NAMES
+/*/
+!/scripts/
+!/assets/
+!/references/
+!/teams/
+!/docs/
+!/knowledge/
+!/briefs/
+!/hooks/
+!/tests/
