@@ -11,12 +11,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vault_paths import ensure_dirs, skill_root, vault_root, write_default_config      # noqa: E402
-from vault_secrets import DEFAULT_REDIS, load_secrets, mysql_conf, redis_conn          # noqa: E402
+from vault_secrets import (                                                            # noqa: E402
+    load_secrets, mysql_conf, redis_conn, redis_conf,
+)
 from vault_scan import init_vault_git, run_git                                         # noqa: E402
 import vault_store                                                                     # noqa: E402
 
 FRONT_RE = re.compile(r"^---\s*\n(.*?)\n---\s*", re.S)
-DEFAULT_EXPECTED_HOST = DEFAULT_REDIS["host"]
 
 
 def gate(level: str, ok: bool, detail: str, fix: str = "") -> dict:
@@ -114,15 +115,18 @@ def check_r3(root: Path, fix: bool) -> dict:
 
 def check_r4(root: Path) -> tuple[dict, bool]:
     store = vault_store.open_default(root)
-    expected_host = DEFAULT_EXPECTED_HOST
-    sec = load_secrets(root)
-    if sec.get("redis", {}).get("host"):
-        expected_host = sec["redis"]["host"]
+    # 期望主机统一从 vault_secrets 解析（环境变量 → 本机 secrets 覆盖）；
+    # 本仓不写死任何内网地址，未配置时无法比对，仅告警不硬失败。
+    expected_host = redis_conf(root).get("host") or ""
     # 无凭据/SQLite：本地可继续（can_write_shared=false）；--require-shared 时升为 BLOCKER
     if store.dialect == "sqlite":
         return gate("DEGRADED", False,
                     "store is sqlite (%s), shared write disabled" % store.server,
                     "configure mysql secrets and ensure DB reachable"), False
+    if not expected_host:
+        return gate("DEGRADED", False,
+                    "no expected host configured (set VAULT_REDIS_HOST or secrets redis.host)",
+                    "configure secrets / env, then re-run"), False
     if not store.server.split("@")[-1].startswith(expected_host):
         return gate("DEGRADED", False,
                     "store.server=%s does not match expected host %s" % (

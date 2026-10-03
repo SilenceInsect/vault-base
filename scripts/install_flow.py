@@ -164,11 +164,13 @@ def amrd_defaults() -> dict:
     p = skill_root() / "assets" / "amrd-test.defaults.yml"
     if inv.yaml and p.is_file():
         return inv.load_yaml(p) or {}
+    # 主机不写死：统一从本机配置解析（VAULT_REDIS_HOST → secrets redis.host）
+    conf = redis_conf()
     return {
         "shared_env": {
-            "redis": {"host": DEFAULT_REDIS["host"], "port": int(DEFAULT_REDIS["port"]), "db": 0},
+            "redis": {"host": conf.get("host") or "", "port": int(conf.get("port") or 6379), "db": 0},
             "mysql": {
-                "host": DEFAULT_REDIS["host"],
+                "host": conf.get("host") or "",
                 "port": 3306,
                 "database": "amrd_qa_vault",
             },
@@ -228,10 +230,11 @@ def cmd_phase1_team(args) -> int:
         se = defs.get("shared_env") or {}
         redis = se.get("redis") or {}
         mysql = se.get("mysql") or {}
+        _rconf = redis_conf()
         fills = {
-            "shared_env.redis.host": redis.get("host") or DEFAULT_REDIS["host"],
-            "shared_env.redis.port": int(redis.get("port") or DEFAULT_REDIS["port"]),
-            "shared_env.mysql.host": mysql.get("host") or DEFAULT_REDIS["host"],
+            "shared_env.redis.host": redis.get("host") or _rconf.get("host") or "",
+            "shared_env.redis.port": int(redis.get("port") or _rconf.get("port") or 6379),
+            "shared_env.mysql.host": mysql.get("host") or _rconf.get("host") or "",
             "shared_env.mysql.port": int(mysql.get("port") or 3306),
             "shared_env.mysql.database": mysql.get("database") or "amrd_qa_vault",
             "install.mode": (defs.get("install") or {}).get("mode") or "shared_full",

@@ -25,8 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vault_paths import load_config, vault_root                                    # noqa: E402
 from vault_secrets import (                                                          # noqa: E402
-    DEFAULT_MYSQL_SECTION, DEFAULT_REDIS, load_secrets,
-    mysql_conf, redis_conf, redis_conn,
+    load_secrets, mysql_conf, mysql_section_name, redis_conf, redis_conn,
 )
 
 TZ = timezone(timedelta(hours=8))
@@ -274,8 +273,8 @@ def build_report(root: Path, quick: bool) -> dict:
         "store_server": store.server,
         "hips_tray_running": hips_tray_running(),
         "secrets_loaded": bool(load_secrets(root)),
-        "default_redis_host": DEFAULT_REDIS["host"],
-        "default_mysql_section": DEFAULT_MYSQL_SECTION,
+        "default_redis_host": redis_conf(root).get("host") or "",
+        "default_mysql_section": mysql_section_name(root),
     }
 
     ok = len(blockers) == 0

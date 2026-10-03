@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""只读探测团队公共环境（Redis / MySQL @208）。
+"""只读探测团队公共环境（Redis / MySQL）。
+
+配置全部来自本机（环境变量或 gitignore 的 secrets.local.json），本仓不写死任何内网地址：
+  VAULT_SECRETS        本机 secrets.local.json 路径
+  VAULT_REDIS_HOST     共享 Redis 主机
+  VAULT_REDIS_PORT     共享 Redis 端口（默认 6379）
+  VAULT_MYSQL_SECTION  secrets 中共享库 section 名
 
 纪律：
   1. 全程只读，不写任何键、不建任何表
@@ -14,14 +20,16 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
 import sys
 from pathlib import Path
 
-SECRETS = Path(r"<vault-client-root>\_kb\secrets.local.json")
-SEC_NAME = "mysql_shared"
-REDIS_HOST = "198.51.100.10"
-REDIS_PORT = 6379
+SECRETS = Path(os.environ["VAULT_SECRETS"]).expanduser() if os.environ.get("VAULT_SECRETS") \
+    else Path(os.environ.get("VAULT_ROOT", ".")).expanduser() / "_kb" / "secrets.local.json"
+SEC_NAME = os.environ.get("VAULT_MYSQL_SECTION", "")
+REDIS_HOST = os.environ.get("VAULT_REDIS_HOST", "")
+REDIS_PORT = int(os.environ.get("VAULT_REDIS_PORT", "6379"))
 
 
 class Resp:

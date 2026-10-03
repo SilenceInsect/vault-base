@@ -1,5 +1,9 @@
 # amrd-test 团队默认共享环境（无密码；密码只进 secrets.local.json）
 # 逻辑 ID：test-team:amrd-test
+#
+# 主机地址不写进本仓：由环境变量或本机 secrets.local.json 提供
+#   VAULT_REDIS_HOST    共享 Redis/MySQL 主机
+#   VAULT_REDIS_PORT    共享 Redis 端口（默认 6379）
 schema_version: 1
 team:
   team_type: test-team
@@ -9,15 +13,13 @@ install:
   mode: shared_full
 shared_env:
   redis:
-    host: "198.51.100.10"
     port: 6379
     db: 0
     expected_version: "3.2.12"
   mysql:
-    host: "198.51.100.10"
     port: 3306
     database: amrd_qa_vault
     charset: utf8mb4
 notes: |
-  选择 amrd-test 时自动复用上述 Redis/MySQL；
+  选择 amrd-test 时复用本机配置的 Redis/MySQL 地址；
   凭据从本机 secrets.local.json 或环境变量读取，不写入本文件。

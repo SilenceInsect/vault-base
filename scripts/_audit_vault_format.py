@@ -2,6 +2,7 @@
 """Audit local vault MD against vault-base naming + frontmatter rules."""
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -126,12 +127,14 @@ def check_vault(root: Path, label: str):
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+    # 本机路径不写死：默认 ~/.cursor/skills/<skill>/references/vault，可用 VAULT_AUDIT_ROOT 覆盖
+    base = Path(os.environ.get("VAULT_AUDIT_ROOT") or (Path.home() / ".cursor" / "skills")).expanduser()
     check_vault(
-        Path(r"C:\Users\<user>\.cursor\skills\req-code-consistency\references\vault"),
+        base / "req-code-consistency" / "references" / "vault",
         "req-code-consistency 本地金库",
     )
     check_vault(
-        Path(r"C:\Users\<user>\.cursor\skills\vault-base\references\vault"),
+        base / "vault-base" / "references" / "vault",
         "vault-base 底座金库",
     )
     print("\n规范摘要 (vault-base 3.1/3.2/3.6):")

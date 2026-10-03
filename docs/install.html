@@ -102,7 +102,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
   </div>
   <table style="margin-top:16px;width:100%;font-size:13px;border-collapse:collapse">
     <tr style="text-align:left;border-bottom:1px solid var(--line)"><th>需求</th><th>命令</th><th>对照验收</th></tr>
-    <tr><td>1 选团队；amrd-test 复用默认库，否则问答写配置</td><td><code class="inl">phase1-team</code> / <code class="inl">write-field</code></td><td>amrd-test → host 198.51.100.10 + amrd_qa_vault；自定义 → questions[] 逐项</td></tr>
+    <tr><td>1 选团队；amrd-test 复用默认库，否则问答写配置</td><td><code class="inl">phase1-team</code> / <code class="inl">write-field</code></td><td>amrd-test → host 取自环境变量/本机 secrets + amrd_qa_vault；自定义 → questions[] 逐项</td></tr>
     <tr><td>2 环境检查（Python/laya/stuntd…）列版本与待下载，同意后装</td><td><code class="inl">phase2-env [--approve-install]</code></td><td>pending_download 空或已同意安装；python≥3.10；pymysql/pyyaml OK</td></tr>
     <tr><td>3 测 Redis/MySQL；检查|建立库表索引</td><td><code class="inl">phase3-db [--approve-ddl]</code></td><td>shared_ok；schema ok；缺表仅在 --approve-ddl 后执行 ddl_mysql57.sql</td></tr>
     <tr><td>4 列 skill 清单，同意后改造</td><td><code class="inl">phase4-skills [--approve-adapt]</code></td><td>candidates 经用户确认；hooks/rules/preflight 写入；manifest 记录</td></tr>

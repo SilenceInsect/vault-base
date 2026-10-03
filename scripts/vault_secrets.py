@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
 import sys
 from pathlib import Path
@@ -19,8 +20,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vault_paths import vault_root                                   # noqa: E402
 
-DEFAULT_REDIS = {"host": "198.51.100.10", "port": 6379, "db": 0}
-DEFAULT_MYSQL_SECTION = "mysql_shared"
+# 共享环境默认值：本仓不落任何真实内网地址 / 主机名。
+# 取值优先级：本机 secrets.local.json 的 redis 段 → 下列环境变量 → 空值（调用方据此提示补配置）
+DEFAULT_REDIS = {
+    "host": os.environ.get("VAULT_REDIS_HOST", ""),
+    "port": int(os.environ.get("VAULT_REDIS_PORT", "6379")),
+    "db": 0,
+}
+# 共享库 section 名同样不写死：优先取 secrets.local.json 的 default_section 字段
+DEFAULT_MYSQL_SECTION = os.environ.get("VAULT_MYSQL_SECTION", "")
 
 
 class RespLite:
@@ -74,7 +82,6 @@ class RespLite:
 
 
 def load_secrets(root: Path | None = None) -> dict:
-    import os
     p = Path(os.environ["VAULT_SECRETS"]) if os.environ.get("VAULT_SECRETS") \
         else (root or vault_root()) / "_kb" / "secrets.local.json"
     if not p.exists():
@@ -83,6 +90,23 @@ def load_secrets(root: Path | None = None) -> dict:
         return json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+def _resolve_mysql_section(data: dict, section: str | None) -> tuple[str, dict] | tuple[None, None]:
+    """定位共享库 section。
+
+    优先级：显式参数 → secrets.local.json 的 default_section → 环境变量 → 仅一个 section 时自动选中。
+    section 名只在本地（gitignore 的）secrets.local.json 中出现，本仓不写死。
+    """
+    sec_all = data.get("sections") or {}
+    name = (section or "").strip() or str(data.get("default_section") or "").strip() \
+        or DEFAULT_MYSQL_SECTION
+    if name and name in sec_all:
+        return name, sec_all[name]
+    if len(sec_all) == 1:
+        only = next(iter(sec_all.items()))
+        return only[0], only[1]
+    return None, None
 
 
 def redis_conf(root: Path | None = None) -> dict:
@@ -102,9 +126,17 @@ def redis_conn(root: Path | None = None, timeout: float = 3.0) -> RespLite | Non
         return None
 
 
+def mysql_section_name(root: Path | None = None,
+                       section: str | None = None) -> str:
+    """返回当前生效的共享库 section 名（供诊断/回显使用，不含密码）。"""
+    name, _sec = _resolve_mysql_section(load_secrets(root), section)
+    return name or ""
+
+
 def mysql_conf(root: Path | None = None,
-               section: str = DEFAULT_MYSQL_SECTION) -> dict | None:
-    sec = load_secrets(root).get("sections", {}).get(section)
+               section: str | None = None) -> dict | None:
+    data = load_secrets(root)
+    _name, sec = _resolve_mysql_section(data, section)
     if not sec:
         return None
     return {

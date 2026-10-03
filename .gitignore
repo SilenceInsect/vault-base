@@ -11,6 +11,9 @@ scripts/__pycache__/
 # 本机安装状态记录（含内网库名 / 主机地址 / 本机路径，不入库）
 /INSTALL-STATUS.md
 
+# WorkBuddy 会话工作记忆（本机上下文，不入库）
+/.workbuddy/
+
 # portable local tool installs under this skill (do not commit binaries)
 /Obsidian/
 /Python/
