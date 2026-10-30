@@ -144,6 +144,37 @@ def main() -> int:
         )
         enqueue_rc = cp2.returncode
 
+    chat_notice = ""
+    event_id = ""
+    try:
+        scripts_path = str(scripts)
+        if scripts_path not in sys.path:
+            sys.path.insert(0, scripts_path)
+        from vault_event_log import log_trigger  # type: ignore
+        from vault_paths import vault_root as _vr  # type: ignore
+        ev = log_trigger(
+            action="post_task_sediment",
+            skill_id=args.skill_id,
+            doc_uuid=doc_uuid,
+            actor=args.author or "skill-hook",
+            title=args.title,
+            shared=shared,
+            detail={
+                "kind": args.kind,
+                "yaml": str(yml),
+                "vault_dump_rc": dump_rc,
+                "enqueue_rc": enqueue_rc,
+            },
+            root=_vr(),
+            print_notice=True,
+        )
+        chat_notice = ev.get("chat_notice") or ""
+        event_id = ev.get("event_id") or ""
+    except Exception as e:
+        chat_notice = "【金库提示】技能触发·过程沉淀 | skill=%s | log_error=%s" % (
+            args.skill_id, type(e).__name__)
+        print(chat_notice, flush=True)
+
     print(json.dumps({
         "ok": True,
         "uuid": doc_uuid,
@@ -152,6 +183,8 @@ def main() -> int:
         "vault_dump_rc": dump_rc,
         "enqueue_rc": enqueue_rc,
         "dump_log": dump_out[-1500:],
+        "chat_notice": chat_notice,
+        "event_id": event_id,
     }, ensure_ascii=False, indent=2))
     return 0
 

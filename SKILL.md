@@ -215,6 +215,11 @@ python "<skill_root>/scripts/laya_export_dataset.py" --seed-only
 - 开启：`vault.config.json` → `laya.enabled=true`，`base_url=http://127.0.0.1:8000`
 - 接入点：`vault_consume`（规则之后）；**永不**直接 approve
 
+## 最小 MCP（验证版）
+
+工具面可选走 MCP（协议/适配仍用本 Skill）：`vault_recall` · `vault_dump` · `vault_readiness` · `vault_preflight`。  
+安装与 Cursor 配置见 [mcp/README.md](mcp/README.md)；入口 `mcp/server.py`。
+
 ## 检索（prefixCache → MySQL → 本地）
 
 ```bash

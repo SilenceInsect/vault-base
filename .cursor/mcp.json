@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vault-base": {
+      "command": "python",
+      "args": ["${workspaceFolder}/mcp/server.py"]
+    }
+  }
+}

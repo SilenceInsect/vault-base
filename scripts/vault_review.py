@@ -35,7 +35,25 @@ def cmd_show(args, store) -> int:
 
 def cmd_approve(args, store) -> int:
     n = store.approve(args.uuid, args.reviewer, note=args.note or "")
-    print(json.dumps({"uuid": args.uuid, "approved": n > 0}, ensure_ascii=False))
+    out = {"uuid": args.uuid, "approved": n > 0}
+    if n:
+        try:
+            from vault_event_log import log_event
+            ev = log_event(
+                event_type="review",
+                action="vault_review_approve",
+                doc_uuid=args.uuid,
+                actor=args.reviewer,
+                title=args.note or "approve",
+                shared=True,
+                detail={"note": args.note or ""},
+                print_notice=True,
+            )
+            out["chat_notice"] = ev.get("chat_notice")
+            out["event_id"] = ev.get("event_id")
+        except Exception as e:
+            out["event_log_error"] = "%s: %s" % (type(e).__name__, e)
+    print(json.dumps(out, ensure_ascii=False))
     return 0 if n else 1
 
 
@@ -44,7 +62,25 @@ def cmd_reject(args, store) -> int:
         print(json.dumps({"error": "--note required for reject"}, ensure_ascii=False))
         return 1
     n = store.reject(args.uuid, args.reviewer, note=args.note)
-    print(json.dumps({"uuid": args.uuid, "rejected": n > 0}, ensure_ascii=False))
+    out = {"uuid": args.uuid, "rejected": n > 0}
+    if n:
+        try:
+            from vault_event_log import log_event
+            ev = log_event(
+                event_type="review",
+                action="vault_review_reject",
+                doc_uuid=args.uuid,
+                actor=args.reviewer,
+                title=args.note[:80],
+                shared=False,
+                detail={"note": args.note},
+                print_notice=True,
+            )
+            out["chat_notice"] = ev.get("chat_notice")
+            out["event_id"] = ev.get("event_id")
+        except Exception as e:
+            out["event_log_error"] = "%s: %s" % (type(e).__name__, e)
+    print(json.dumps(out, ensure_ascii=False))
     return 0 if n else 1
 
 

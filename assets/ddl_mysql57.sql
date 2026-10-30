@@ -147,3 +147,27 @@ CREATE TABLE IF NOT EXISTS `vault_event` (
   KEY `idx_lease` (`status`, `lease_until`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='事件队列（MySQL 后端）';
+
+-- ============================================================
+-- 5. 技能触发 / 金库写入事件日志（chat 显式提示同源）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `vault_skill_event_log` (
+  `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `event_id`     CHAR(36)        NOT NULL,
+  `event_type`   VARCHAR(32)     NOT NULL COMMENT 'write|trigger|review|consume',
+  `action`       VARCHAR(64)     NOT NULL COMMENT 'vault_dump|pre_task_recall|sediment…',
+  `skill_id`     VARCHAR(64)     NOT NULL DEFAULT '',
+  `doc_uuid`     CHAR(36)        NULL,
+  `actor`        VARCHAR(64)     NOT NULL DEFAULT '',
+  `actor_ip`     VARCHAR(45)     NULL,
+  `title`        VARCHAR(256)    NULL,
+  `detail_json`  JSON            NULL,
+  `chat_notice`  VARCHAR(512)    NULL,
+  `created_at`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_event` (`event_id`),
+  KEY `idx_skill_time` (`skill_id`, `created_at`),
+  KEY `idx_type_time` (`event_type`, `created_at`),
+  KEY `idx_doc` (`doc_uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='技能触发与金库写入事件日志';

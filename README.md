@@ -54,6 +54,11 @@ python vault-base/scripts/install_gate.py --id "<team-type>:<team-name>" --requi
 
 召回：`python scripts/vault_recall.py --skill-id <id> --query "..."`
 
+### 最小 MCP（验证版）
+
+四工具面：`vault_recall` / `vault_dump` / `vault_readiness` / `vault_preflight`。  
+见 [`mcp/README.md`](mcp/README.md)。项目内启用：复制或合并 [`.cursor/mcp.json`](.cursor/mcp.json) 后重启/刷新 MCP。
+
 ## 公开仓边界
 
 | 可提交 | 勿提交 |

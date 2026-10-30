@@ -121,8 +121,29 @@ def dump_md(
     )
     path = target / ("%s.md" % doc_uuid)
     path.write_text(text, encoding="utf-8")
-    return {"path": str(path), "uuid": doc_uuid,
-            "content_hash": chash, "redacted": red.hit}
+    out = {"path": str(path), "uuid": doc_uuid,
+           "content_hash": chash, "redacted": red.hit,
+           "skill_id": skill_id, "doc_type": doc_type,
+           "title": title, "is_candidate_shared": is_candidate_shared}
+    try:
+        from vault_event_log import log_write
+        ev = log_write(
+            action="vault_dump",
+            skill_id=skill_id,
+            doc_uuid=doc_uuid,
+            actor=author,
+            title=title,
+            shared=bool(is_candidate_shared),
+            detail={"path": str(path), "doc_type": doc_type, "redacted": red.hit},
+            root=root,
+            print_notice=True,
+        )
+        out["chat_notice"] = ev.get("chat_notice")
+        out["event_id"] = ev.get("event_id")
+        out["event_mysql_ok"] = ev.get("mysql_ok")
+    except Exception as e:
+        out["event_log_error"] = "%s: %s" % (type(e).__name__, e)
+    return out
 
 
 def main() -> int:

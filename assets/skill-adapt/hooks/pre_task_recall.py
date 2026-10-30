@@ -99,6 +99,31 @@ def main() -> int:
         out_lines.append(line)
     checklist.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
 
+    chat_notice = ""
+    event_id = ""
+    try:
+        from vault_event_log import log_trigger  # type: ignore
+        ev = log_trigger(
+            action="pre_task_recall",
+            skill_id=args.skill_id,
+            actor="skill-hook",
+            title=query[:80],
+            detail={
+                "query": query,
+                "hit_count": len(uuids),
+                "uuids": uuids[:20],
+                "redis_available": bool(report.get("redis_available")),
+            },
+            root=vault_root(),
+            print_notice=True,
+        )
+        chat_notice = ev.get("chat_notice") or ""
+        event_id = ev.get("event_id") or ""
+    except Exception as e:
+        chat_notice = "【金库提示】技能触发·前置召回 | skill=%s | log_error=%s" % (
+            args.skill_id, type(e).__name__)
+        print(chat_notice, flush=True)
+
     result = {
         "ok": True,
         "redis_available": bool(report.get("redis_available")),
@@ -107,6 +132,8 @@ def main() -> int:
         "uuids": uuids,
         "titles": titles,
         "checklist": str(checklist),
+        "chat_notice": chat_notice,
+        "event_id": event_id,
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
