@@ -99,10 +99,17 @@ python "<skill_root>/scripts/vault_review.py" list
 
 建库 DDL：`assets/ddl_mysql57.sql`（需 DBA 批复 X-4/X-5 后再在 208 执行）。
 
-## 其他团队安装（七阶段 · 断档续装）
+## 其他团队安装（一站式 · 七阶段仍在内部）
 
-其他 team **必须**走 `scripts/install_flow.py`；禁止跳过清单直接 `env_ensure`。  
-对照验收与逐步说明见 [docs/install.html](docs/install.html)。
+**推荐入口**：`scripts/install_all.py`（clone 后一条命令：link + secrets + 七阶段 + 可选 MCP）。  
+其他 team **必须**走安装编排（`install_all` 或 `install_flow`）；禁止跳过清单直接 `env_ensure`。  
+断档续装：`install_flow.py resume --id … --execute --yes`（`--execute` 真跑，不只打印）。  
+对照验收与逐步说明见 [docs/install.html](docs/install.html) · 流程图 [docs/skill-lifecycle-flow.html](docs/skill-lifecycle-flow.html)。
+
+```bash
+python "<skill_root>/scripts/install_all.py"              # 一次决策 + 自动跑完；续装同命令
+python "<skill_root>/scripts/install_all.py" --redecide   # 重新决策
+```
 
 | # | 阶段 | 命令 | 要点 |
 |---|------|------|------|
@@ -112,7 +119,7 @@ python "<skill_root>/scripts/vault_review.py" list
 | 4 | skill 改造 | `phase4-skills` | 列出本机 skill；同意后 `--approve-adapt` |
 | 5 | harness | `phase5-harness` | `HARNESS.md` + `install-manifest.json`（卸载/更新目录） |
 | 6 | 冒烟 | `phase6-smoke` | 门禁 + WebPlatform 归档/人审/Laya 人工清单 |
-| — | 续装/卸载 | `status` / `resume` / `uninstall-plan` | 进度：`teams/<type>/<name>/install-progress.json` |
+| — | 续装/卸载 | `status` / `resume --execute --yes` / `uninstall-plan` | 进度：`teams/<type>/<name>/install-progress.json`；resume 默认只出 `executable_argv` |
 
 ```bash
 python "<skill_root>/scripts/install_flow.py" phase1-team --id test-team:amrd-test

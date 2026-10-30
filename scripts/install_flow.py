@@ -184,6 +184,7 @@ def cmd_status(args) -> int:
     prog = load_progress(t, n)
     man = load_manifest(t, n) if manifest_path(t, n).is_file() else None
     inv_p = inv.inventory_path(t, n)
+    plan = resume_plan(t, n, lid)
     report = {
         "logical_id": lid,
         "progress": prog,
@@ -191,13 +192,15 @@ def cmd_status(args) -> int:
         "inventory": str(inv_p),
         "manifest_exists": man is not None,
         "manifest_adapted_count": len((man or {}).get("adapted_skills") or []),
-        "next_phase": next(
-            (k for k in PHASES if prog["phases"].get(k, {}).get("status") != "done"),
-            None,
-        ),
+        "mcp": (man or {}).get("mcp") if man else None,
+        "next_phase": plan.get("next_phase"),
         "resume_hint": (
-            "python scripts/install_flow.py resume --id %s" % lid
+            "python scripts/install_flow.py resume --id %s --execute --yes" % lid
         ),
+        "executable_argv": plan.get("executable_argv") or [],
+        "needs_consent": plan.get("needs_consent"),
+        "needs_input": plan.get("needs_input"),
+        "done": bool(plan.get("done")),
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
@@ -741,6 +744,15 @@ python scripts/install_flow.py uninstall --id {lid} --approve
 ```
 
 更新覆盖：重新 `phase4-skills --approve-adapt --force` + `phase5-harness`。
+
+## 一站式安装（推荐）
+
+```bash
+python scripts/install_all.py --id {lid} --yes --secrets <本机secrets路径>
+python scripts/install_flow.py resume --id {lid} --execute --yes   # 断档续跑
+```
+
+MCP：`install_all --enable-mcp` 或 `python scripts/mcp_install.py`；状态见 manifest `mcp` 字段。
 """.format(lid=lid)
     harness_md.write_text(harness_body, encoding="utf-8")
 
@@ -828,51 +840,178 @@ def cmd_phase6_smoke(args) -> int:
     return 0 if not hard_fail else 1
 
 
-def cmd_resume(args) -> int:
-    t, n, lid = _resolve(args)
+PHASE_CMD = {
+    "1_team": "phase1-team",
+    "2_env": "phase2-env",
+    "3_db": "phase3-db",
+    "4_skills": "phase4-skills",
+    "5_harness": "phase5-harness",
+    "6_smoke": "phase6-smoke",
+}
+
+
+def build_phase_argv(
+    phase: str,
+    lid: str,
+    status: str,
+    *,
+    yes: bool = False,
+    include_optional: bool = False,
+    adapt_all: bool = True,
+) -> list[str]:
+    """构造下一阶段可执行 argv（相对 install_flow.py 的子命令参数）。"""
+    cmd = PHASE_CMD[phase]
+    argv = [cmd, "--id", lid]
+    # --yes：预带 approve，一次跑过同意门；waiting_consent 时 hint 也带上
+    want_approve = bool(yes or status == "waiting_consent")
+    if phase == "2_env":
+        if include_optional:
+            argv.append("--include-optional")
+        if want_approve:
+            argv.append("--approve-install")
+    elif phase == "3_db":
+        if want_approve:
+            argv.append("--approve-ddl")
+    elif phase == "4_skills":
+        if want_approve:
+            argv.append("--approve-adapt")
+            if adapt_all:
+                argv.append("--all")
+    return argv
+
+
+def resume_plan(
+    t: str,
+    n: str,
+    lid: str,
+    *,
+    yes: bool = False,
+    include_optional: bool = False,
+    adapt_all: bool = True,
+) -> dict:
+    """断档续装计划（含 executable_argv，供 install_all / Agent 直接调用）。"""
     prog = load_progress(t, n)
     nxt = next(
         (k for k in PHASES if prog["phases"].get(k, {}).get("status") not in ("done",)),
         None,
     )
-    mapping = {
-        "1_team": "phase1-team",
-        "2_env": "phase2-env",
-        "3_db": "phase3-db",
-        "4_skills": "phase4-skills",
-        "5_harness": "phase5-harness",
-        "6_smoke": "phase6-smoke",
-    }
     if nxt is None:
-        print(json.dumps({
-            "ok": True, "logical_id": lid, "message": "全部阶段已 done",
+        return {
+            "ok": True,
+            "done": True,
+            "logical_id": lid,
+            "message": "全部阶段已 done",
             "progress": prog,
-        }, ensure_ascii=False, indent=2))
-        return 0
-    st = prog["phases"][nxt].get("status")
-    cmd = mapping[nxt]
-    hint = "python scripts/install_flow.py %s --id %s" % (cmd, lid)
-    if st == "waiting_consent":
-        if nxt == "2_env":
-            hint += " --approve-install"
-        elif nxt == "3_db":
-            hint += " --approve-ddl"
-        elif nxt == "4_skills":
-            hint += " --approve-adapt --all"
-    elif st == "waiting_input":
+            "executable_argv": [],
+            "needs_consent": False,
+            "needs_input": False,
+        }
+    st = prog["phases"][nxt].get("status") or "pending"
+    argv = build_phase_argv(
+        nxt, lid, st,
+        yes=yes,
+        include_optional=include_optional,
+        adapt_all=adapt_all,
+    )
+    needs_consent = st == "waiting_consent"
+    needs_input = st == "waiting_input"
+    # 无 --yes 时：waiting_consent 的 argv 仍带 approve 供提示，但 execute 须 --yes
+    hint_argv = build_phase_argv(
+        nxt, lid, st,
+        yes=True if needs_consent else yes,
+        include_optional=include_optional,
+        adapt_all=adapt_all,
+    )
+    if needs_input:
         hint = (
             "先 write-field 补齐 questions，再 "
-            "python scripts/install_flow.py %s --id %s" % (cmd, lid)
+            "python scripts/install_flow.py %s --id %s" % (PHASE_CMD[nxt], lid)
         )
-    print(json.dumps({
+    else:
+        hint = "python scripts/install_flow.py " + " ".join(hint_argv)
+    return {
         "ok": True,
+        "done": False,
         "logical_id": lid,
         "next_phase": nxt,
         "status": st,
+        "needs_consent": needs_consent,
+        "needs_input": needs_input,
         "resume_command": hint,
+        "executable_argv": argv,
+        "hint_argv": hint_argv,
         "phase_detail": prog["phases"][nxt],
-    }, ensure_ascii=False, indent=2))
-    return 0
+        "progress": prog,
+    }
+
+
+def cmd_resume(args) -> int:
+    t, n, lid = _resolve(args)
+    yes = bool(getattr(args, "yes", False))
+    include_optional = bool(getattr(args, "include_optional", False))
+    adapt_all = not bool(getattr(args, "no_adapt_all", False))
+    plan = resume_plan(
+        t, n, lid,
+        yes=yes,
+        include_optional=include_optional,
+        adapt_all=adapt_all,
+    )
+    if plan.get("done"):
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return 0
+
+    if not getattr(args, "execute", False):
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return 0
+
+    # --execute：真正跑下一阶段
+    if plan.get("needs_input"):
+        plan["ok"] = False
+        plan["error"] = "waiting_input：请先 write-field 补齐清单缺项"
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return 2
+
+    if plan.get("needs_consent") and not yes:
+        plan["ok"] = False
+        plan["error"] = (
+            "waiting_consent：加 --yes 自动同意，或手动执行 resume_command"
+        )
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return 2
+
+    # 有 --yes 时用带 approve 的 hint_argv；否则用当前 argv（首跑 phase 可能无 approve）
+    run_argv = plan.get("hint_argv") if yes else plan.get("executable_argv")
+    run_argv = list(run_argv or plan.get("executable_argv") or [])
+    if not run_argv:
+        plan["ok"] = False
+        plan["error"] = "empty executable_argv"
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return 2
+
+    rc, out = _run_py("install_flow.py", run_argv)
+    # 解析子阶段输出
+    phase_out: Any = out
+    try:
+        phase_out = json.loads(out)
+    except Exception:
+        phase_out = {"raw": (out or "")[-4000:], "rc": rc}
+
+    result = {
+        "ok": rc == 0,
+        "executed": True,
+        "logical_id": lid,
+        "ran_argv": run_argv,
+        "rc": rc,
+        "phase_result": phase_out,
+        "next": resume_plan(
+            t, n, lid,
+            yes=yes,
+            include_optional=include_optional,
+            adapt_all=adapt_all,
+        ),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if rc == 0 else (rc if rc else 1)
 
 
 def cmd_uninstall_plan(args) -> int:
@@ -1000,8 +1139,27 @@ def main() -> int:
     add_id(p)
     p.set_defaults(func=cmd_phase6_smoke)
 
-    p = sub.add_parser("resume", help="断档续装：输出下一命令")
+    p = sub.add_parser(
+        "resume",
+        help="断档续装：默认输出计划+executable_argv；--execute 真正跑下一阶段",
+    )
     add_id(p)
+    p.add_argument(
+        "--execute", action="store_true",
+        help="执行下一阶段（不只打印命令）",
+    )
+    p.add_argument(
+        "--yes", "-y", action="store_true",
+        help="自动同意 install/DDL/adapt（与 --execute 联用；waiting_consent 必需）",
+    )
+    p.add_argument(
+        "--include-optional", action="store_true",
+        help="phase2 把 laya/stuntd 列入安装",
+    )
+    p.add_argument(
+        "--no-adapt-all", action="store_true",
+        help="phase4 同意时不自动 --all（需自行指定 skill）",
+    )
     p.set_defaults(func=cmd_resume)
 
     p = sub.add_parser("uninstall-plan", help="卸载预览")

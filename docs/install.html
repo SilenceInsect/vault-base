@@ -90,15 +90,23 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
 </header>
 
 <div class="overview">
-  <h2 style="margin:0 0 12px;font-size:13px;color:var(--fg-dim);font-weight:500">七阶段安装总览（clone 后执行）</h2>
+  <h2 style="margin:0 0 12px;font-size:13px;color:var(--fg-dim);font-weight:500">一站式入口（推荐）+ 七阶段内部实现</h2>
+  <p style="margin:0 0 12px;font-size:13px;color:var(--fg-dim)">
+    clone ≠ 安装完成。推荐<strong>一条命令</strong>：
+    <code class="inl">python scripts/install_all.py</code>
+    （一次决策落盘；续装同命令不再问）。流程图见
+    <a href="skill-lifecycle-flow.html">skill-lifecycle-flow.html</a>。
+  </p>
   <div class="flowline">
     <span class="node hot">0 Clone</span><i>→</i>
-    <span class="node hot">1 选团队</span><i>→</i>
-    <span class="node hot">2 环境清单</span><i>→</i>
-    <span class="node hot">3 Redis/MySQL</span><i>→</i>
+    <span class="node hot">install_all</span><i>→</i>
+    <span class="node">1 选团队</span><i>→</i>
+    <span class="node">2 环境清单</span><i>→</i>
+    <span class="node">3 Redis/MySQL</span><i>→</i>
     <span class="node">4 skill 改造</span><i>→</i>
-    <span class="node">5 harness 清单</span><i>→</i>
-    <span class="node">6 冒烟+Web</span>
+    <span class="node">5 harness</span><i>→</i>
+    <span class="node">6 冒烟+Web</span><i>→</i>
+    <span class="node">MCP</span>
   </div>
   <table style="margin-top:16px;width:100%;font-size:13px;border-collapse:collapse">
     <tr style="text-align:left;border-bottom:1px solid var(--line)"><th>需求</th><th>命令</th><th>对照验收</th></tr>
@@ -110,9 +118,11 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
     <tr><td>6 amrd-test 冒烟 + WebPlatform 归档/人审/Laya</td><td><code class="inl">phase6-smoke</code></td><td>readiness + install_gate I1–I9；Web 侧人工勾选</td></tr>
     <tr><td>7 安装日志断档续装</td><td><code class="inl">status</code> / <code class="inl">resume</code></td><td>teams/…/install-progress.json 记录各阶段 status</td></tr>
   </table>
-<pre style="margin-top:14px">python %USERPROFILE%\common-skills-repo\vault-base\scripts\install_flow.py resume --id test-team:amrd-test</pre>
+<pre style="margin-top:14px">python %USERPROFILE%\common-skills-repo\vault-base\scripts\install_all.py
+python %USERPROFILE%\common-skills-repo\vault-base\scripts\install_all.py
+<span style="color:#6e7681"># ↑ 第二条=续装，读 install-choices.json，不再决策</span></pre>
   <p style="margin:12px 0 0;font-size:13px;color:var(--fg-dim)">
-    下方「阶段 0–7」为历史细化步骤（clone / IDE / DDL / 门禁细节），与上表七阶段对应；日常安装优先 <code class="inl">install_flow.py</code>。
+    下方「阶段 0–7」为历史细化步骤；日常优先 <code class="inl">install_all.py</code>，分步排障再用 <code class="inl">install_flow.py</code> phase*。
   </p>
 </div>
 

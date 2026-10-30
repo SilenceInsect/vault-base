@@ -4,32 +4,42 @@
 
 ## 快速安装
 
-1. 打开手册：[`docs/install.html`](docs/install.html)
-2. Clone 到用户级 common 仓并联接 IDE：
+**clone ≠ 安装完成。** 推荐一站式 CLI（内部仍走七阶段门禁）：
+
+1. Clone 到用户级 common 仓：
 
 ```bash
 mkdir -p ~/common-skills-repo   # Windows: mkdir %USERPROFILE%\common-skills-repo
 cd ~/common-skills-repo
 git clone https://github.com/SilenceInsect/vault-base.git vault-base
-
-python vault-base/scripts/common_skills_repo.py init
-python vault-base/scripts/common_skills_repo.py link --skill vault-base --ides cursor,claude,codex --backup-existing
-python vault-base/scripts/common_skills_repo.py status --skill vault-base
 ```
 
-3. 由 skill 引导补齐安装物料清单（组目录默认被 ignore）：
+2. 一站式安装（**只需这一条**；开头决策一次并落盘，续装同命令不再问）：
 
 ```bash
-python vault-base/scripts/install_inventory.py init --id "<team-type>:<team-name>"
-python vault-base/scripts/install_inventory.py missing --id "<team-type>:<team-name>"
+cd vault-base
+python scripts/install_all.py
 ```
 
-4. `env_ensure` → 填写本机 `secrets.local.json`（勿提交）→ `readiness_gate`
-5. 共享开启后必跑安装门禁（I1–I8；勿只看 readiness 绿灯）：
+向导一次问：团队 ID、共享/仅本地、secrets 路径（若需要）、是否启用 MCP。  
+pip / DDL / skill 适配在确认后自动同意。断档续跑仍执行：
 
 ```bash
-python vault-base/scripts/install_gate.py --id "<team-type>:<team-name>" --require-shared --json
+python scripts/install_all.py
 ```
+
+重做决策：`python scripts/install_all.py --redecide`  
+CI 无交互：`python scripts/install_all.py --assume-defaults --non-interactive`（可加 `--secrets` / `--local-only`）
+
+3. 手册与流程图：[`docs/install.html`](docs/install.html) · [`docs/skill-lifecycle-flow.html`](docs/skill-lifecycle-flow.html)
+
+4. 共享开启后仍建议核对安装门禁（I1–I9；勿只看 readiness 绿灯）：
+
+```bash
+python scripts/install_gate.py --id test-team:amrd-test --require-shared --json
+```
+
+分步安装（link / inventory / phase1…6）仍可用；日常优先 `install_all`。
 
 ### 安装注意事项（历史阻断）
 
@@ -42,6 +52,7 @@ python vault-base/scripts/install_gate.py --id "<team-type>:<team-name>" --requi
 | `vault_consume` 空队列 `TimeoutError` | socket timeout ≥ BRPOP 等待；`consume_one` 吞超时 | I8 |
 
 完整步骤与验收：[`docs/install.html`](docs/install.html)。  
+安装→使用流程图：[`docs/skill-lifecycle-flow.html`](docs/skill-lifecycle-flow.html)。  
 功能总览（含 Laya / 召回 / 历史阻断）：[`docs/repo-function-analysis.html`](docs/repo-function-analysis.html)。
 
 ### Redis 职责

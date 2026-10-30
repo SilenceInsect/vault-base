@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vault-base · 安装到使用流程图</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel-2:#1c2128; --line:#30363d; --line-soft:#21262d;
+  --fg:#e6edf3; --fg-dim:#8b949e; --fg-mute:#6e7681;
+  --blue:#4493f8; --teal:#3fb950; --amber:#d29922; --red:#f85149; --cyan:#39c5cf; --purple:#a371f7;
+  --mono:"Cascadia Code","JetBrains Mono","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+code,pre{font-family:var(--mono);font-size:12.5px}
+code.inl{background:var(--panel-2);border:1px solid var(--line-soft);padding:1px 5px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px}
+header{padding:48px 0 28px;border-bottom:1px solid var(--line)}
+h1{margin:0 0 10px;font-size:24px;font-weight:500}
+.sub{color:var(--fg-dim);margin:0 0 18px;max-width:860px}
+.meta{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:3px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:12px;color:var(--fg-dim)}
+.chip b{color:var(--fg);font-weight:500}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.dot.b{background:var(--blue)}.dot.t{background:var(--teal)}.dot.a{background:var(--amber)}.dot.c{background:var(--cyan)}.dot.p{background:var(--purple)}
+
+.layout{display:grid;grid-template-columns:180px 1fr;gap:28px;align-items:start;margin-top:28px}
+nav.toc{position:sticky;top:20px;padding:12px 0;font-size:13px}
+nav.toc .toc-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-mute);margin:0 0 12px}
+nav.toc a{display:block;padding:5px 10px;border-left:2px solid transparent;color:var(--fg-dim)}
+nav.toc a:hover{color:var(--fg);background:var(--panel);text-decoration:none;border-left-color:var(--blue)}
+
+section{margin:0 0 40px;scroll-margin-top:20px}
+h2{margin:0 0 8px;font-size:18px;font-weight:500;padding-bottom:10px;border-bottom:1px solid var(--line)}
+p.lead{color:var(--fg-dim);margin:8px 0 18px}
+
+/* swimlane overview */
+.lanes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 8px}
+@media(max-width:960px){.lanes{grid-template-columns:1fr 1fr}.layout{grid-template-columns:1fr}nav.toc{display:none}}
+.lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px;min-height:120px}
+.lane .ph{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-mute);margin-bottom:8px}
+.lane h3{margin:0 0 10px;font-size:15px;font-weight:500}
+.lane ul{margin:0;padding:0;list-style:none}
+.lane li{font-size:12.5px;color:var(--fg-dim);padding:4px 0 4px 14px;position:relative}
+.lane li::before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:var(--line)}
+.lane.install{border-color:#1f3a5f}.lane.install li::before{background:var(--blue)}
+.lane.adapt{border-color:#3d2a5a}.lane.adapt li::before{background:var(--purple)}
+.lane.use{border-color:#2a4a34}.lane.use li::before{background:var(--teal)}
+.lane.mcp{border-color:#1a4a4d}.lane.mcp li::before{background:var(--cyan)}
+
+/* vertical flow */
+.vflow{display:flex;flex-direction:column;align-items:stretch;gap:0;margin:8px 0 20px}
+.vstep{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:stretch}
+.rail{display:flex;flex-direction:column;align-items:center}
+.bubble{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);flex:none;z-index:1}
+.bubble.install{border-color:#1f3a5f;color:var(--blue);background:#111a26}
+.bubble.adapt{border-color:#3d2a5a;color:var(--purple);background:#1a1226}
+.bubble.use{border-color:#2a4a34;color:var(--teal);background:#0f1914}
+.bubble.mcp{border-color:#1a4a4d;color:var(--cyan);background:#0f1c1e}
+.bubble.gate{border-color:#5a4118;color:var(--amber);background:#261d0c}
+.stem{width:2px;flex:1;min-height:18px;background:linear-gradient(180deg,var(--line),var(--line-soft));margin:2px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card.gate{border-color:#5a4118;background:linear-gradient(180deg,#1a150c,var(--panel))}
+.card.mcp{border-color:#1a4a4d}
+.card-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.card-head h3{margin:0;font-size:15px;font-weight:500;flex:1}
+.tag{font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--fg-dim)}
+.tag.auto{border-color:#1d4a2c;color:var(--teal);background:#0d1f14}
+.tag.man{border-color:#3d2f10;color:var(--amber);background:#1f1708}
+.tag.opt{border-color:#1a4a4d;color:var(--cyan);background:#0f1c1e}
+.tag.mcp{border-color:#1f3a5f;color:var(--blue);background:#111a26}
+.card p{margin:4px 0;color:var(--fg-dim);font-size:13px}
+.card pre{margin:10px 0 0;padding:10px 12px;background:#0b0f14;border:1px solid var(--line-soft);border-radius:7px;overflow-x:auto;color:#c9d1d9;line-height:1.55}
+.card .cmd{color:#79c0ff}.card .cm{color:#6e7681}
+
+/* horizontal mini flow */
+.hflow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 4px}
+.hflow .n{padding:5px 10px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line);font-size:12px;color:var(--fg-dim)}
+.hflow .n.hot{border-color:#5a4118;color:var(--amber);background:#261d0c}
+.hflow .n.ok{border-color:#2a4a34;color:var(--teal);background:#0f1914}
+.hflow .n.mcp{border-color:#1a4a4d;color:var(--cyan);background:#0f1c1e}
+.hflow i{color:var(--fg-mute);font-style:normal}
+
+/* five steps grid */
+.five{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0}
+@media(max-width:960px){.five{grid-template-columns:1fr}}
+.fbox{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px;position:relative}
+.fbox .no{font-family:var(--mono);font-size:11px;color:var(--teal);margin-bottom:4px}
+.fbox strong{display:block;font-size:13px;margin-bottom:4px}
+.fbox span{font-size:12px;color:var(--fg-dim)}
+.fbox .via{display:block;margin-top:8px;font-size:11px;color:var(--fg-mute)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel);color:var(--fg-dim);font-weight:500}
+td{background:var(--panel-2)}
+.callout{padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);margin:12px 0;color:var(--fg-dim);font-size:13px}
+.callout.warn{border-color:#5a4118;background:#1a150c}
+.callout.ok{border-color:#2a4a34;background:#0f1914}
+.callout .ct{display:block;font-weight:500;margin-bottom:4px;color:var(--fg)}
+.callout.warn .ct{color:var(--amber)}.callout.ok .ct{color:var(--teal)}
+footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--fg-mute);font-size:12px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 0;font-size:12px;color:var(--fg-dim)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>vault-base · 安装到使用流程图</h1>
+  <p class="sub">
+    基于当前仓库实结构（非仅文档）：本仓是 <b>Skill + Python CLI 脚本集</b>，不是 pip/npm 一键包。
+    <b>不能</b>只靠 <code class="inl">git clone</code> 就算装好；须 clone 后再跑 CLI。
+  </p>
+  <div class="meta">
+    <span class="chip"><span class="dot a"></span>结论 <b>clone ≠ 安装完成</b></span>
+    <span class="chip"><span class="dot b"></span>安装 <b>install_flow CLI</b></span>
+    <span class="chip"><span class="dot p"></span>适配 <b>skill_vault_adapt</b></span>
+    <span class="chip"><span class="dot t"></span>使用 <b>五步协议</b></span>
+    <span class="chip"><span class="dot c"></span>可选 <b>MCP</b></span>
+  </div>
+  <div class="legend">
+    <span><i class="sw" style="background:var(--blue)"></i>安装</span>
+    <span><i class="sw" style="background:var(--purple)"></i>适配</span>
+    <span><i class="sw" style="background:var(--teal)"></i>使用</span>
+    <span><i class="sw" style="background:var(--cyan)"></i>MCP</span>
+    <span><i class="sw" style="background:var(--amber)"></i>门禁</span>
+  </div>
+</header>
+
+<div class="callout warn" style="margin-top:20px" id="verdict">
+  <span class="ct">仓库实勘结论：必须「git clone + CLI」，不能仅 clone</span>
+  <table style="margin:10px 0 0">
+    <tr><th>证据（当前仓）</th><th>含义</th></tr>
+    <tr><td>无 <code class="inl">pyproject.toml</code> / <code class="inl">setup.py</code> / <code class="inl">package.json</code></td><td>不是 <code class="inl">pip install .</code> / npm 一键安装型项目</td></tr>
+    <tr><td>入口是 <code class="inl">scripts/*.py</code>（install_flow / common_skills_repo / skill_vault_adapt…）</td><td>安装与使用靠 Python CLI 编排</td></tr>
+    <tr><td><code class="inl">secrets.local.json</code> 被 gitignore；仓内仅有 <code class="inl">assets/secrets.local.json.example</code></td><td>clone 拿不到共享库凭据，须本机另配</td></tr>
+    <tr><td>Cursor 发现路径是 <code class="inl">~/.cursor/skills/vault-base</code> junction → 真相源</td><td>仅 clone 到任意目录，IDE 不会自动当 Skill 加载</td></tr>
+    <tr><td>SKILL.md：其他 team <b>必须</b>走 <code class="inl">install_flow.py</code>，禁止跳过清单直接 <code class="inl">env_ensure</code></td><td>共享/团队安装以七阶段 CLI 为准</td></tr>
+    <tr><td>装好底座后业务 skill 仍须 <code class="inl">skill_vault_adapt</code></td><td>clone 不会自动改造本机其他 skill</td></tr>
+  </table>
+  <p style="margin:12px 0 0">
+    <b>一站式（推荐，一条命令）：</b>
+    <code class="inl">git clone</code>
+    →
+    <code class="inl">python scripts/install_all.py</code>
+    （向导<strong>只决策一次</strong>并写入 <code class="inl">install-choices.json</code>；内部自动 link / secrets / 七阶段 / MCP）
+  </p>
+  <p style="margin:8px 0 0">
+    断档续跑：<strong>还是</strong>
+    <code class="inl">python scripts/install_all.py</code>
+    （读上次 choices，不再提问）。重做决策加 <code class="inl">--redecide</code>。
+  </p>
+  <p style="margin:8px 0 0;color:var(--fg-mute)">
+    clone 之后你只拥有「源码 + 脚本 + 文档」；联接、依赖、库表、凭据、skill 注入都不会自动发生。
+  </p>
+</div>
+
+<div class="layout">
+<nav class="toc">
+  <div class="toc-title">目录</div>
+  <a href="#verdict">实勘结论</a>
+  <a href="#overview">总览四泳道</a>
+  <a href="#end2end">端到端主流程</a>
+  <a href="#install">A. 安装</a>
+  <a href="#adapt">B. 适配</a>
+  <a href="#use">C. 日常使用</a>
+  <a href="#mcp">D. MCP 并行</a>
+  <a href="#map">命令对照</a>
+</nav>
+
+<main>
+
+<section id="overview">
+  <h2>总览四泳道</h2>
+  <p class="lead">一条主链：<b>clone 只是第 0 步</b> → CLI 装底座 → 改业务 skill → 任务内五步；MCP 只替换「怎么调工具」，不替换协议。</p>
+  <div class="lanes">
+    <div class="lane install">
+      <div class="ph">Phase A</div>
+      <h3>安装底座</h3>
+      <ul>
+        <li>Clone → common-skills-repo</li>
+        <li>IDE junction 联接</li>
+        <li>install_flow 七阶段</li>
+        <li>secrets / readiness / I1–I9</li>
+      </ul>
+    </div>
+    <div class="lane adapt">
+      <div class="ph">Phase B</div>
+      <h3>业务 Skill 适配</h3>
+      <ul>
+        <li>scan 本机 skill</li>
+        <li>adapt 注入 SKILL.md</li>
+        <li>hooks 留在 vault 侧</li>
+        <li>可快速 uninstall</li>
+      </ul>
+    </div>
+    <div class="lane use">
+      <div class="ph">Phase C</div>
+      <h3>日常使用（五步）</h3>
+      <ul>
+        <li>readiness + 前置召回</li>
+        <li>preflight 逐问完备</li>
+        <li>做事 + 过程沉淀</li>
+        <li>dump / 人审 / Laya</li>
+      </ul>
+    </div>
+    <div class="lane mcp">
+      <div class="ph">Phase D · 可选</div>
+      <h3>最小 MCP</h3>
+      <ul>
+        <li>pip install mcp deps</li>
+        <li>.cursor/mcp.json</li>
+        <li>对话里调四工具</li>
+        <li>协议仍靠 Skill</li>
+      </ul>
+    </div>
+  </div>
+  <div class="hflow" style="margin-top:18px">
+    <span class="n hot">0 Clone</span><i>→</i>
+    <span class="n hot">1–3 环境/库</span><i>→</i>
+    <span class="n">4–5 改造/harness</span><i>→</i>
+    <span class="n">6 冒烟</span><i>→</i>
+    <span class="n ok">adapt 业务 skill</span><i>→</i>
+    <span class="n ok">任务五步</span>
+    <i>∥</i>
+    <span class="n mcp">可选 MCP</span>
+  </div>
+</section>
+
+<section id="end2end">
+  <h2>端到端主流程</h2>
+  <p class="lead">按时间顺序阅读；琥珀色卡片为硬门禁，未通过则禁止共享写入。</p>
+
+  <div class="vflow">
+
+    <div class="vstep">
+      <div class="rail"><div class="bubble install">A0</div><div class="stem"></div></div>
+      <div class="card">
+        <div class="card-head">
+          <h3>git clone（仅拿到源码，≠ 安装完成）</h3>
+          <span class="tag man">必要但不充分</span>
+        </div>
+        <p>Clone 到 <code class="inl">~/common-skills-repo/vault-base</code>。此时还没有：IDE Skill 联接、pip 依赖确认、secrets、库表、业务 skill 注入。</p>
+<pre><span class="cmd">git clone</span> https://github.com/SilenceInsect/vault-base.git ~/common-skills-repo/vault-base</pre>
+      </div>
+    </div>
+
+    <div class="vstep">
+      <div class="rail"><div class="bubble install">A1</div><div class="stem"></div></div>
+      <div class="card">
+        <div class="card-head">
+          <h3>一站式 CLI：install_all</h3>
+          <span class="tag auto">推荐</span>
+        </div>
+        <p>一条命令串起：IDE link → secrets 落位 → bootstrap 清单 → 七阶段 <code class="inl">resume --execute</code> → 可选 MCP。内部同意门仍在；<code class="inl">--yes</code> 才自动批准 pip/DDL/adapt。</p>
+        <div class="hflow">
+          <span class="n hot">link</span><i>→</i>
+          <span class="n hot">secrets</span><i>→</i>
+          <span class="n">1…6 phases</span><i>→</i>
+          <span class="n mcp">MCP</span>
+        </div>
+<pre><span class="cmd">python</span> scripts/install_all.py
+<span class="cm"># 续装 / 断档：同一条，不再决策</span>
+<span class="cmd">python</span> scripts/install_all.py</pre>
+      </div>
+    </div>
+
+    <div class="vstep">
+      <div class="rail"><div class="bubble gate">G</div><div class="stem"></div></div>
+      <div class="card gate">
+        <div class="card-head">
+          <h3>门禁：readiness + install_gate</h3>
+          <span class="tag man">必过</span>
+        </div>
+        <p>有 <b>BLOCKER</b> → 中止。共享写入看 <code class="inl">capability.can_write_shared</code>；勿只看 readiness 绿灯，须过 I1–I9。</p>
+<pre><span class="cmd">python</span> scripts/readiness_gate.py --fix --json
+<span class="cmd">python</span> scripts/install_gate.py --id test-team:amrd-test --require-shared --json</pre>
+      </div>
+    </div>
+
+    <div class="vstep">
+      <div class="rail"><div class="bubble adapt">B</div><div class="stem"></div></div>
+      <div class="card">
+        <div class="card-head">
+          <h3>适配业务 Skill（单点注入）</h3>
+          <span class="tag auto">adapt</span>
+        </div>
+        <p>只改目标 skill 的 <code class="inl">SKILL.md</code>（marker 路由节）。hooks / rules / preflight / sediment 全在 vault 侧，卸载可快摘。</p>
+<pre><span class="cmd">python</span> scripts/skill_vault_adapt.py scan --json
+<span class="cmd">python</span> scripts/skill_vault_adapt.py adapt --skill-id &lt;id&gt;
+<span class="cm"># 或 --all</span></pre>
+      </div>
+    </div>
+
+    <div class="vstep">
+      <div class="rail"><div class="bubble use">C</div><div class="stem"></div></div>
+      <div class="card">
+        <div class="card-head">
+          <h3>触发业务 Skill → 强制五步</h3>
+          <span class="tag auto">Agent</span>
+        </div>
+        <p>在 Cursor 中打开已适配 skill（或 <code class="inl">/skill-name</code>）。Agent 须走召回 → 前置物料 → 逐问 → 沉淀 → 持久化；成功后把 <code class="inl">【金库提示】</code> 贴进 Chat。</p>
+        <div class="five">
+          <div class="fbox">
+            <div class="no">1</div>
+            <strong>前置召回</strong>
+            <span>Redis vault:c: (+ MySQL)</span>
+            <span class="via">pre_task_recall / vault_recall</span>
+          </div>
+          <div class="fbox">
+            <div class="no">2</div>
+            <strong>前置物料 YAML</strong>
+            <span>vault 侧 preflight.yml</span>
+            <span class="via">preflight init</span>
+          </div>
+          <div class="fbox">
+            <div class="no">3</div>
+            <strong>逐问完备</strong>
+            <span>一次只问一项</span>
+            <span class="via">missing → write-field</span>
+          </div>
+          <div class="fbox">
+            <div class="no">4</div>
+            <strong>过程沉淀</strong>
+            <span>决策 / 链路 / 工具</span>
+            <span class="via">post_task_sediment</span>
+          </div>
+          <div class="fbox">
+            <div class="no">5</div>
+            <strong>持久化</strong>
+            <span>本地 → 可选 shared 人审</span>
+            <span class="via">vault_dump / enqueue</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vstep">
+      <div class="rail"><div class="bubble mcp">D</div></div>
+      <div class="card mcp">
+        <div class="card-head">
+          <h3>可选：最小 MCP 工具面</h3>
+          <span class="tag opt">并行</span>
+          <span class="tag mcp">MCP</span>
+        </div>
+        <p>装依赖 → 启用 <code class="inl">.cursor/mcp.json</code> → Settings 刷新 MCP。对话里自然语言即可调四工具；<b>不替代</b>五步协议与 adapt。</p>
+        <div class="hflow">
+          <span class="n mcp">vault_readiness</span><i>→</i>
+          <span class="n mcp">vault_preflight</span><i>→</i>
+          <span class="n mcp">vault_recall</span><i>→</i>
+          <span class="n mcp">vault_dump</span>
+        </div>
+<pre><span class="cmd">pip install</span> -r mcp/requirements.txt
+<span class="cm"># Cursor Settings → MCP → 启用 vault-base</span>
+<span class="cm"># Chat：「用 vault-base 跑 readiness（quick）」</span></pre>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="install">
+  <h2>A. 安装细节速查</h2>
+  <table>
+    <tr><th>阶段</th><th>命令要点</th><th>验收</th></tr>
+    <tr><td>1 选团队</td><td><code class="inl">phase1-team</code> / <code class="inl">write-field</code></td><td>inventory 写好；密码只进 secrets.local.json</td></tr>
+    <tr><td>2 环境</td><td><code class="inl">phase2-env [--approve-install]</code></td><td>Python≥3.10；pymysql / pyyaml</td></tr>
+    <tr><td>3 库</td><td><code class="inl">phase3-db [--approve-ddl]</code></td><td>Redis PING；MySQL schema；DDL 仅批准后执行</td></tr>
+    <tr><td>4 skill</td><td><code class="inl">phase4-skills [--approve-adapt]</code></td><td>候选 skill 经确认后注入</td></tr>
+    <tr><td>5 harness</td><td><code class="inl">phase5-harness</code></td><td>HARNESS.md + install-manifest.json</td></tr>
+    <tr><td>6 冒烟</td><td><code class="inl">phase6-smoke</code></td><td>readiness + I1–I9；Web 人审清单</td></tr>
+  </table>
+  <div class="callout warn">
+    <span class="ct">脱敏边界</span>
+    公开仓勿提交：内网 host、密码、<code class="inl">secrets.local.json</code>、本地 answers/decisions/references、skill_event_log。
+  </div>
+</section>
+
+<section id="adapt">
+  <h2>B. 适配后落点</h2>
+  <table>
+    <tr><th>内容</th><th>落点</th><th>说明</th></tr>
+    <tr><td>SKILL.md marker 节</td><td>业务 skill（唯一改动）</td><td><code class="inl">&lt;!-- vault-base:begin/end --&gt;</code></td></tr>
+    <tr><td>hooks</td><td><code class="inl">assets/skill-adapt/hooks/</code></td><td>不复制到业务 skill</td></tr>
+    <tr><td>preflight / sediment</td><td><code class="inl">&lt;vault&gt;/&lt;skill_id&gt;/</code></td><td>跨 IDE 同名共享一份</td></tr>
+    <tr><td>卸载</td><td><code class="inl">skill_vault_adapt.py uninstall</code></td><td>摘 marker；沉淀保留</td></tr>
+  </table>
+</section>
+
+<section id="use">
+  <h2>C. 日常使用（Agent 视角）</h2>
+  <ol class="hflow" style="display:block;color:var(--fg-dim);padding-left:18px;line-height:1.9">
+    <li>用户触发已适配 skill（如 <code class="inl">/git-workflow</code>）。</li>
+    <li>先 <b>readiness</b>（有 BLOCKER 则停；共享写入看 can_write_shared）。</li>
+    <li><b>pre_task_recall</b> → 把 <code class="inl">【金库提示】</code> 贴进 Chat。</li>
+    <li><b>preflight missing</b> → 一次一问 → write-field，直到 missing 空。</li>
+    <li>执行业务任务；过程中/结案 <b>sediment + dump</b>；再贴金库提示。</li>
+    <li>候选共享：enqueue → MySQL pending → 人审 → Redis；私有保持 private。</li>
+  </ol>
+  <div class="callout ok">
+    <span class="ct">检索叠读顺序</span>
+    技能索引 → 共享金库（cache→MySQL）→ 本地 Vault → 领域库（若有）→ 资料原文 → 才向用户提问。P0/P1 禁止把默认读源改成公共库。
+  </div>
+</section>
+
+<section id="mcp">
+  <h2>D. MCP 与 Skill 分工</h2>
+  <table>
+    <tr><th>层</th><th>形态</th><th>职责</th></tr>
+    <tr><td>协议 / 适配</td><td>Skill + SKILL.md</td><td>五步强制、adapt、brief、协作规则、<code class="inl">【金库提示】</code></td></tr>
+    <tr><td>工具面</td><td>MCP <code class="inl">mcp/server.py</code></td><td><code class="inl">vault_recall</code> · <code class="inl">vault_dump</code> · <code class="inl">vault_readiness</code> · <code class="inl">vault_preflight</code></td></tr>
+  </table>
+  <p class="lead" style="margin-top:8px">调用方式：Settings 启用后，在对话直接说目标即可，无需手敲 python；也可继续用 scripts CLI。</p>
+</section>
+
+<section id="map">
+  <h2>命令 / 工具对照</h2>
+  <table>
+    <tr><th>意图</th><th>CLI</th><th>MCP tool</th></tr>
+    <tr><td>环境门禁</td><td><code class="inl">readiness_gate.py</code></td><td><code class="inl">vault_readiness</code></td></tr>
+    <tr><td>知识召回</td><td><code class="inl">vault_recall.py</code></td><td><code class="inl">vault_recall</code></td></tr>
+    <tr><td>前置物料</td><td><code class="inl">preflight_materials.py</code></td><td><code class="inl">vault_preflight</code></td></tr>
+    <tr><td>结案沉淀</td><td><code class="inl">vault_dump.py</code></td><td><code class="inl">vault_dump</code></td></tr>
+    <tr><td>业务适配</td><td><code class="inl">skill_vault_adapt.py</code></td><td>—</td></tr>
+    <tr><td>七阶段安装</td><td><code class="inl">install_flow.py</code></td><td>—</td></tr>
+  </table>
+</section>
+
+</main>
+</div>
+
+<footer>
+  vault-base · docs/skill-lifecycle-flow.html · 与
+  <a href="install.html">install.html</a>、
+  <a href="../mcp/README.md">mcp/README.md</a>、
+  <a href="../SKILL.md">SKILL.md</a> 对齐 · 2026-10-30
+</footer>
+</div>
+</body>
+</html>

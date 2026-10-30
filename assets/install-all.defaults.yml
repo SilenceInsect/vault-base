@@ -1,0 +1,29 @@
+# install_all.py 默认预设（可被 CLI 覆盖；不含密码）
+schema_version: 1
+
+# 默认团队逻辑 ID
+id: "test-team:amrd-test"
+
+# 安装模式：shared_full | local_only
+mode: shared_full
+
+# 自动同意 pip / DDL / adapt
+yes: false
+
+# phase4 改造全部待适配 skill
+adapt_all: true
+
+# phase2 是否安装可选包（laya / stuntd）
+include_optional: false
+
+# 一站式结束后启用最小 MCP
+enable_mcp: true
+
+# 额外写入 ~/.cursor/mcp.json
+mcp_global: false
+
+# IDE 联接
+link_ides: auto
+
+# 凭据：优先 CLI --secrets / 环境变量；此处仅占位说明
+# secrets_path: ""   # 若填写，安装时拷入 references/vault/_kb/secrets.local.json
