@@ -37,6 +37,10 @@ kinds:
   - id: exec_logic
     label: 跨会话可复用执行逻辑
     doc_type: reference
+  - id: search_index_strategy
+    label: 检索/索引最短路径策略（含反模式）
+    doc_type: reference
+    fields: [min_chain, full_chain, tools, confidence]
   - id: tool_call_logic
     label: 工具调用逻辑
     doc_type: reference

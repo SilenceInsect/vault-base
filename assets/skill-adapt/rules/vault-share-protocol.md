@@ -15,11 +15,13 @@
 3. **自动填充 + 访谈完备**  
    已知字段（author、workspace、brief 路径、召回结果）自动填；不确定项访谈确认后再改清单结构。
 
-4. **过程决策自动沉淀**  
-   执行中凡形成可复用结论/链路/工具选择/质量改进，调用  
-   `hooks/post_task_sediment.py`（读本 rules + taxonomy）。  
+4. **过程决策自动沉淀（主动 · 勿等用户催促）**  
+   执行中凡形成可复用结论/链路/工具选择/质量改进/**检索最短路径或索引策略**，  
+   **立即**调用 `hooks/post_task_sediment.py`（读本 rules + taxonomy）。  
+   **禁止**把沉淀当成「用户额外请求」；用户未开口也必须写。  
    分类：`pending_human` / `human_reviewed` / `private` / `public_shared` /  
-   `reusable_decision` / `scenario_decision` / `business_flow` 等（见 `knowledge-taxonomy.yml`）。
+   `reusable_decision` / `scenario_decision` / `business_flow` /  
+   `exec_logic` / `search_index_strategy` 等（见 `knowledge-taxonomy.yml`）。
 
 5. **持久化与 Web 归档**  
    本地 YAML/MD →（shared）scan enqueue → MySQL pending → 人审 → Redis `vault:c:`；  
@@ -27,6 +29,7 @@
 
 ## 硬约束
 
+- **主动沉淀**：可复用结论一成型即 `post_task_sediment` / `vault_dump`；等用户说「帮我沉淀」视为协议违规。  
 - 敏感/凭证：强制 private，不可旁路。  
 - 共享候选：只进 pending，人审前不得当「已审公共知识」。  
 - HTML 报告路径、置信度、最小/完整执行链路写入沉淀 payload，供跨会话复用。

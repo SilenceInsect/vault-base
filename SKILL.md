@@ -4,8 +4,9 @@ description: >-
   团队知识金库底座：为任意业务 Skill 提供统一的知识检索、沉淀与共享链路。
   安装后用 skill_vault_adapt 扫描本机 skill，单点注入 SKILL.md 路由节（hooks/rules/preflight
   中心化管理，快速卸载），使业务 skill 走五步：Redis+MySQL 召回 → YAML 前置物料 →
-  逐问完备 → 过程沉淀 → 人审/归档/Laya。触发词：知识金库、Vault、skill 适配、前置物料、
-  沉淀知识、知识审核、Laya、金库环境自检。
+  逐问完备 → 过程沉淀（主动，勿等用户催促）→ 人审/归档/Laya。
+  可复用决策/索引策略一成型即 post_task_sediment/vault_dump。
+  触发词：知识金库、Vault、skill 适配、前置物料、沉淀知识、主动沉淀、知识审核、Laya、金库环境自检。
 ---
 
 # vault-base · 共享知识金库底座
@@ -196,8 +197,21 @@ python "<skill_root>/scripts/skill_vault_adapt.py" uninstall --all
 1. **召回上下文**：`assets/skill-adapt/hooks/pre_task_recall.py` → Redis `vault:c:`（+ 可选 MySQL）  
 2. **生成前置物料清单（YAML）**：`preflight_materials.py init`  
 3. **自动填充 + 逐问完备**：`missing --json` → **一次只问一项**（Matt/grill 式 Skills）→ `write-field`  
-4. **过程沉淀**：`assets/skill-adapt/hooks/post_task_sediment.py`（决策/链路/工具/置信度/HTML…）  
+4. **过程沉淀（主动）**：`assets/skill-adapt/hooks/post_task_sediment.py`（决策/链路/索引策略/工具/置信度/HTML…）  
 5. **持久化**：本地 YAML →（shared）enqueue → MySQL pending → 人审 → Redis；WebPlatform VaultBase 归档/清理/Laya 训练  
+
+#### 主动沉淀硬规则（金库引导 · 勿等用户催促）
+
+适配后业务 skill 的 Agent **必须**在可复用结论成型时自行沉淀，**不要**等用户说「帮我写进金库」：
+
+| 触发 | 动作 |
+|------|------|
+| 可复用决策 / 业务口径 / 字段取值路径 | `post_task_sediment`（`reusable_decision` / `scenario_decision`） |
+| 检索最短路径、索引策略、反模式 | `post_task_sediment`（`search_index_strategy` / `exec_logic`） |
+| 结案可共享结论 | `--share-scope shared`（必要时 `--enqueue`）+ Chat 复述 `【金库提示】` |
+
+未跑 adapt、仅挂 `vault_base` 时：同样用 `vault_dump` / `post_task_sediment` 主动落盘。  
+协议正文：`assets/skill-adapt/rules/vault-share-protocol.md`；注入模板含「主动沉淀」节。
 
 手工声明（未跑 adapt 时最低限度）：
 
@@ -206,7 +220,7 @@ accepts_brief: true
 vault_base: "~/common-skills-repo/vault-base"
 ```
 
-第 0 步仍须 `readiness_gate` + brief；结案 `vault_dump` / `post_task_sediment`。
+第 0 步仍须 `readiness_gate` + brief；过程中与结案均须 `vault_dump` / `post_task_sediment`（主动）。
 
 ## 共享判定（Laya 本地，可选）
 
