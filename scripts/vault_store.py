@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vault_paths import vault_root                                                         # noqa: E402
 from vault_secrets import DEFAULT_MYSQL_SECTION, mysql_conf                                 # noqa: E402
+from vault_share_scope import approve_blocked_reason                                        # noqa: E402
 
 TZ = timezone(timedelta(hours=8))
 DEFAULT_DB = "amrd_qa_vault"
@@ -21,9 +22,15 @@ def _now_iso() -> str:
     return datetime.now(TZ).replace(microsecond=0).isoformat()
 
 
+def _approve_share_gate(title: str = "", body: str = "", **meta) -> str | None:
+    """人审写入公共主库前复检；命中本机环境/敏感信息则返回拒批原因。"""
+    return approve_blocked_reason(title=title or "", body=body or "", **meta)
+
+
 class VaultStore:
     dialect: str
     server: str
+    last_approve_error: str = ""
 
     def event_seen(self, event_id: str) -> bool:
         raise NotImplementedError
@@ -213,10 +220,37 @@ class SqliteVaultStore(VaultStore):
         return out
 
     def approve(self, uuid: str, reviewer: str, note: str = "") -> int:
+        self.last_approve_error = ""
         row = self._conn.execute(
             "SELECT * FROM pending WHERE uuid=? AND status='pending'", (uuid,),
         ).fetchone()
         if not row:
+            return 0
+        meta = {}
+        try:
+            meta = json.loads(row["meta_json"] or "{}")
+        except Exception:
+            meta = {}
+        blocked = _approve_share_gate(
+            title=row["title"] or "",
+            body=row["body"] or "",
+            tags=meta.get("tags"),
+            share_scope=meta.get("share_scope"),
+            owner=meta.get("owner"),
+            source_ref=meta.get("source_ref"),
+            claim_key=meta.get("claim_key"),
+        )
+        if blocked:
+            self.last_approve_error = blocked
+            ts = _now_iso()
+            reject_note = (note + " | " if note else "") + blocked
+            self._conn.execute(
+                "UPDATE pending SET status='rejected', reviewer=?, review_note=?, "
+                "reviewed_at=?, updated_at=? WHERE uuid=?",
+                (reviewer, reject_note, ts, ts, uuid),
+            )
+            self.audit(uuid, "approve_blocked", reviewer, note=blocked)
+            self._conn.commit()
             return 0
         ts = _now_iso()
         self._conn.execute(
@@ -578,6 +612,7 @@ class MysqlVaultStore(VaultStore):
         } for r in rows]
 
     def approve(self, uuid: str, reviewer: str, note: str = "") -> int:
+        self.last_approve_error = ""
         with self._conn.cursor() as cur:
             cur.execute(
                 "SELECT * FROM shared_vault_pending_review "
@@ -586,6 +621,41 @@ class MysqlVaultStore(VaultStore):
             )
             row = cur.fetchone()
             if not row:
+                return 0
+            blocked = _approve_share_gate(
+                title=row.get("title") or "",
+                body=row.get("body") or "",
+                segments=row.get("segments"),
+                tags=row.get("tags"),
+                source_ref=row.get("source_ref"),
+                claim_key=row.get("claim_key"),
+            )
+            if blocked:
+                self.last_approve_error = blocked
+                ts = _mysql_now()
+                reject_note = ((note + " | ") if note else "") + blocked
+                cur.execute(
+                    "UPDATE shared_vault_pending_review SET status='rejected', "
+                    "reviewer=%s, review_note=%s, reviewed_at=%s "
+                    "WHERE uuid=%s AND status='pending'",
+                    (reviewer, reject_note, ts, uuid),
+                )
+                self._conn.commit()
+                self.audit(uuid, "approve_blocked", reviewer, note=blocked,
+                           target_table="shared_vault_pending_review")
+                try:
+                    import vault_prefix_cache as vpc
+                    cache = vpc.open_cache()
+                    try:
+                        cache.invalidate_doc(
+                            uuid,
+                            skill_id=row.get("skill_id") or "",
+                            claim_key=row.get("claim_key") or "",
+                        )
+                    finally:
+                        cache.close()
+                except Exception:
+                    pass
                 return 0
             ts = _mysql_now()
             created = row.get("enqueued_at") or ts

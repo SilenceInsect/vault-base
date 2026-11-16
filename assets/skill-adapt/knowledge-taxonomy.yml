@@ -11,14 +11,16 @@ review_status:
     label: 人工已审
     persist: [mysql_main, redis_vault_c, local_yaml]
 
-# 可见性
+# 可见性（share_scope: private|team；本机盘符路径一律 private）
 visibility:
   - id: private
-    label: 私有知识
+    label: 私有知识（含本机环境绑定 / owner 归属）
     is_candidate_shared: false
+    share_scope: private
   - id: public_shared
-    label: 公共知识
+    label: 公共知识（可移植结论；禁止个人盘符路径）
     is_candidate_shared: true
+    share_scope: team
 
 # 知识种类（沉淀时必填一类）
 kinds:

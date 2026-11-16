@@ -36,6 +36,10 @@ def cmd_show(args, store) -> int:
 def cmd_approve(args, store) -> int:
     n = store.approve(args.uuid, args.reviewer, note=args.note or "")
     out = {"uuid": args.uuid, "approved": n > 0}
+    err = getattr(store, "last_approve_error", "") or ""
+    if err:
+        out["error"] = err
+        out["blocked"] = True
     if n:
         try:
             from vault_event_log import log_event

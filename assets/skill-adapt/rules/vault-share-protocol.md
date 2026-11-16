@@ -31,5 +31,9 @@
 
 - **主动沉淀**：可复用结论一成型即 `post_task_sediment` / `vault_dump`；等用户说「帮我沉淀」视为协议违规。  
 - 敏感/凭证：强制 private，不可旁路。  
-- 共享候选：只进 pending，人审前不得当「已审公共知识」。  
+- **本机环境绑定**：个人盘符路径、本机工作区清单、仅某使用者可复现的环境事实 → 默认 `share_scope=private` + `owner=<使用者>`；**禁止**对路径类条目使用 `--candidate-shared` / `share_scope=team`。  
+  - 可共享写法：`Design 仓 trunk/原始表格`、SVN URL、逻辑仓名  
+  - 不可共享写法：`D:\AM-RD_Design\trunk\原始表格`、`E:\AM-RD_Server\trunk\game`、`F:\RDClient`  
+- **禁止**业务 Agent 直写 `shared_vault_main` 或绕过 `vault_consume` 手工 `upsert_pending`+`approve`（即使本地脚本也过不了 approve 复检）。  
+- 共享候选：只进 pending，人审前不得当「已审公共知识」；人审 `approve` 会再跑本机环境/敏感复检，命中则拒批。  
 - HTML 报告路径、置信度、最小/完整执行链路写入沉淀 payload，供跨会话复用。
